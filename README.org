@@ -31,10 +31,10 @@ BigCLAM/Leiden
 4. p-value calculation and filtering (in R/Python), build graph
 5. Community detection in C++/OpenMP (leidenalg/bigclam)
 **** Dataset storage
-.uns: names for n_cells, U, s, V', power, covariates
-.varp: PCA based ANN (bool)
-.varp: filtered graph (CSR, data=tvalue)
-.var / .varm: clustering / cluster loadings
+- .uns: names for n_cells, $U$, $\Sigma$, $V'$, power, covariates
+- .varp: PCA based ANN (bool)
+- .varp: filtered graph (CSR, data=tvalue)
+- .var / .varm: clustering / cluster loadings
 **** API
 ***** build_nn_graph
 1. extract dimreduc, variables, covariates using params
