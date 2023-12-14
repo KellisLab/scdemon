@@ -2,17 +2,20 @@ Package: scdemon
 Title: scdemon
 Version: 0.0.1
 Authors@R:
-    person("Benjamin", "James", , "benjames@mit.edu", role = c("aut", "cre"),
-           comment = c(ORCID = "0000-0002-6228-055X"))
-Maintainer: Benjamin James benjames@mit.edu
+    c(person("Benjamin", "James", , "benjames@mit.edu", role = c("aut", "cre"),
+               comment = c(ORCID = "0000-0002-6228-055X")),
+      person("Carles", "Boix", , "cboix@mit.edu", role=c("aut"),
+      	       comment = c(ORCID = "0000-0001-9212-856X")))
 Description: Single cell decomposition into networks
 License: GPL-3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3
-Imports: Rcpp (>= 1.0.7), Matrix, S4Vectors
+Imports: Rcpp, RcppEigen, RcppParallel, Matrix, S4Vectors
 Depends: R (>= 4.1)
 Suggests:
     testthat (>= 3.0.0),
 Config/testthat/edition: 3
 LazyData: true
+LinkingTo: Rcpp, RcppEigen, RcppParallel
+SystemRequirements: C++17
