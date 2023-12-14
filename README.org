@@ -24,3 +24,20 @@ BigCLAM/Leiden
 | scdemon/    | python      |
 | R/          | R code      |
 
+*** Code structure / flow
+1. Extract $U\SigmaV'$, ensure =std=, =n_cells_by_counts=, =covariates= are present.
+2. ANN search. Use RAnnoy (angular) /PyNNDescent (correlation), but need interface for gene-wise. For angular, need to z-score $V'$ beforehand.
+3. SE estimation. Use all dependencies, build in parallel with C++/OpenMP
+4. p-value calculation and filtering (in R/Python), build graph
+5. Community detection in C++/OpenMP (leidenalg/bigclam)
+** large to-dos
+*** TODO pkgdown website
+*** TODO sphinx/readthedocs
+*** TODO C++ tests
+*** TODO vignettes in R and python
+*** TODO C++ demo code in python and R
+*** TODO bigclam in C++
+*** TODO HC0 SE in C++
+*** TODO KNN interface in R/Python
+
+
