@@ -30,6 +30,19 @@ BigCLAM/Leiden
 3. SE estimation. Use all dependencies, build in parallel with C++/OpenMP
 4. p-value calculation and filtering (in R/Python), build graph
 5. Community detection in C++/OpenMP (leidenalg/bigclam)
+**** Dataset storage
+.uns: names for n_cells, U, s, V', power, covariates
+.varp: PCA based ANN (bool)
+.varp: filtered graph (CSR, data=tvalue)
+.var / .varm: clustering / cluster loadings
+**** API
+***** build_nn_graph
+1. extract dimreduc, variables, covariates using params
+2. ANN search (unless varp_from string is non-null. Save in this string if varp doesn't exist)
+3. SE estimation (C++)
+4. Prune edges, then nodes. (based on params)
+5. Save in varp_to, same name as varp_from unless set
+***** leiden(resolution) or bigclam(ncomm)
 ** large to-dos
 *** TODO pkgdown website
 *** TODO sphinx/readthedocs
