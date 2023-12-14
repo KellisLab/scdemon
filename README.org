@@ -1,0 +1,26 @@
+* scdemon
+** algorithm checklist
+*** Normalization
+batteries included
+*** SVD/PCA/LSI
+need extraction
+*** PC filtering/adjustment
+*** Adjacency
+KNN with many NN -> 100? 500?
+
+**** Full -> indices, indptr
+**** Annoy (R/Python) -> indices, indptr (angular; need to pre-Zscore)
+**** PyNNDescent (Python) -> indices, indptr (correlation)
+*** Filtering KNN
+Using CSR input -> indices, indptr,
+compute standard errors and p-values
+*** Community detection
+BigCLAM/Leiden
+** structure
+| directory   | description |
+|-------------+-------------|
+| src/scdemon | C++         |
+| src/rcpp    | C++ in R    |
+| scdemon/    | python      |
+| R/          | R code      |
+
