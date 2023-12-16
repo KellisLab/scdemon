@@ -30,7 +30,7 @@ BigCLAM/Leiden
 3. SE estimation. Use all dependencies, build in parallel with C++/OpenMP
 4. p-value calculation and filtering (in R/Python), build graph
 5. Community detection in C++/OpenMP (leidenalg/bigclam)
-**** Dataset storage 
+**** Dataset storage
 - .varp: PCA based ANN (bool)
 - .varp: filtered graph (CSR, data=tvalue)
 - .var / .varm: clustering / cluster loadings
@@ -43,19 +43,22 @@ BigCLAM/Leiden
 5. Save in varp_to, same name as varp_from unless set
 ***** leiden(resolution) or bigclam(ncomm)
 ** large to-dos (ordered by importance)
-*** TODO C++ demo code linked to python and R
+*** DONE C++ demo code linked to python and R
 *** TODO HC0 SE in C++
+**** Eigen::MatrixBase<T> type
 *** TODO KNN interface in R/Python
+**** Sparse matrix conversion: 0/1 indexing
 *** TODO pkgdown website
 *** TODO sphinx/readthedocs
+*** TODO threaded implementation
+**** OpenMP vs STL parallel
+*** TODO CMake build for R and python
 *** TODO vignettes in R and python
 *** TODO bigclam in C++
 *** TODO bigclam python/R interface
-*** TODO C++ tests 
+*** TODO C++ tests
 *** TODO clustered standard errors in C++: group by sample/batch
+**** cluster robust SE
+**** bootstrapped cluster SE
 *** TODO Newey-West in C++ : sort by sample depth to account for depth autocorrelation
 *** TODO Submit to bioconda (R, python versions)
-
-
-
-
