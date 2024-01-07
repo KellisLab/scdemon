@@ -1,62 +1,59 @@
-
+#ifndef SE_HPP
+#define SE_HPP
 #include <Eigen/Core>
 #include <Eigen/Dense>
-#include <memory>
+#include <iostream>
 #include <algorithm>
 
-template<typename T>
-Eigen::MatrixXd ols_beta(const Eigen::VectorXd &X, const Eigen::MatrixXd &Y)
+/*
+ * Reminder: Y has many columns, X should have 1.
+ */
+template<typename TX, typename TY>
+Eigen::MatrixXd ols_beta(const Eigen::MatrixBase<TX> &X, const Eigen::MatrixBase<TY> &Y)
 {
-	return (X.transpose() * X).inverse() * X.transpose() * Y;
+    return X.completeOrthogonalDecomposition().solve(Y).eval();
 }
 
-Eigen::VectorXd hc0_se_Xvec(const Eigen::VectorXd &X,
-			    const Eigen::MatrixXd &Y,
-			    const std::shared_ptr<Eigen::VectorXd> &dofPtr = nullptr,
-			    const std::shared_ptr<Eigen::MatrixXd> &transform = nullptr)
-{
-	/*
-	 * todo: change X_pinv to be in U space
-	 */
-	Eigen::RowVectorXd X_pinv = X.transpose() / (X.transpose() * X);
-	Eigen::MatrixXd beta = X_pinv * Y;
-	Eigen::MatrixXd resid = Y - X * beta.transpose();
-	Eigen::VectorXd dof;
-	if (dofPtr) {
-		dof = *dofPtr;
-	} else {
-		dof = Eigen::VectorXd::Constant(Y.cols(), transform ? transform ->rows() : X.size());
-	}
-
-	Eigen::MatrixXd meat;
-	Eigen::MatrixXd bread;
-	if (!transform) {
-		double XTX = X.dot(X);
-		meat = resid.array().square().matrix().colwise().sum();
-		bread = Eigen::MatrixXd::Constant(1, Y.cols(), 1.0 / std::max(XTX, std::numeric_limits<double>::epsilon()));
-
-	} else {
-		Eigen::VectorXd X_transpose_U = X.transpose() * (*transform).transpose();
-		double X_transpose_U_U_X = X_transpose_transform.dot(*transform * X);
-		meat = (transform->operator*(resid)).array().square().matrix().colwise().sum();
-		bread = Eigen::MatrixXd::Constant(1, Y.cols(), 1.0 / std::max(X_transpose_U_U_X, std::numeric_limits<double>::epsilon()));
-	}
-
-	for (int i = 0; i < meat.size(); ++i) {
-		meat(i) /= std::max(dof(i) - 1.0, 1.0);  // Adjusted for simple linear regression
-	}
-
-	Eigen::MatrixXd hc0_se = (bread.replicate(1, Y.cols()) * meat.array()).sqrt().matrix();
-	Eigen::MatrixXd result = betas.array() / hc0_se.array();
-
-	// Replace divisions by zero with zeros
-	for (int i = 0; i < result.rows(); ++i) {
-		for (int j = 0; j < result.cols(); ++j) {
-			if (hc0_se(i, j) == 0) {
-				result(i, j) = 0;
-			}
-		}
-	}
-
-	return result;
+template<typename TX, typename TY, typename TB>
+Eigen::MatrixXd ols_resid(const Eigen::MatrixBase<TX> &X,
+			  const Eigen::MatrixBase<TY> &Y,
+			  const Eigen::MatrixBase<TB> &beta) {
+	return (Y - X * beta).eval();
 }
+
+/*
+ * Frisch-Waugh partialling out.
+ * Since I - B(B'B)B' is multiplied by U,
+ * U - B'(B'B)B'U will be the new transform.
+ * = U - B (B^{+} U)
+ * = U - B BPU (where BPU=B^{+} U, saving nrow(U) dimensions ).
+ * Additionally, allows BPU to be calculated using COD/pivoted Householder QR which will be more stable than B^{+} * U
+ */
+template<typename TU, typename TB, typename TBPU>
+Eigen::VectorXd adjust_res(const Eigen::MatrixXd &res,
+			   const Eigen::MatrixBase<TU> &U,
+			   const Eigen::MatrixBase<TB> &B,
+			   const Eigen::MatrixBase<TBPU> &BPU) {
+	/* First coerce bpu_res as ncol(B) is likely very small */
+	Eigen::MatrixXd bpu_res = (BPU * res).eval();
+	return (U * res - B * bpu_res).colwise().norm().eval();
+}
+/*
+ * Ideally this would be called on a KNN graph, such that each X has K neighbors in Vs.
+ * BPU should be computed in the outer layer
+ */
+template<typename TX, typename TVs, typename TU, typename TTUU, typename TB, typename TBPU>
+Eigen::VectorXd hc0_se_Xvec(const Eigen::MatrixBase<TX> &X,
+			    const Eigen::MatrixBase<TVs> &Vs, /* Vs */
+			    const Eigen::MatrixBase<TU> &U,
+			    const Eigen::MatrixBase<TTUU> &TUU,
+			    const Eigen::MatrixBase<TB> &B,
+			    const Eigen::MatrixBase<TBPU> &BPU) {
+	const Eigen::MatrixXd betas = ols_beta(X, Vs);
+	Eigen::MatrixXd res = ols_resid(X, Vs, betas);
+	Eigen::MatrixXd bread_inv = (X.transpose() * TUU * X).eval();
+	Eigen::VectorXd ssr = adjust_res(res, U, B, BPU);
+	Eigen::VectorXd se = ssr.cwiseSqrt() / bread_inv(0, 0);
+	return betas.row(0).transpose().cwiseQuotient(se).eval();
+}
+#endif

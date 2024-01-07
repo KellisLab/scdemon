@@ -1,3 +1,8 @@
+## autoconf
+autom4te.cache/
+config.status
+config.log
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -6,6 +11,7 @@ inst/
 
 # C extensions
 *.so
+*.o
 *.c
 
 # Distribution / packaging
