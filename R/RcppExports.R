@@ -9,11 +9,15 @@ r_ols_resid <- function(X, Y, beta) {
     .Call('_scdemon_r_ols_resid', PACKAGE = 'scdemon', X, Y, beta)
 }
 
-r_adjust_res <- function(res, U, B, BPU) {
-    .Call('_scdemon_r_adjust_res', PACKAGE = 'scdemon', res, U, B, BPU)
+r_fw_meat <- function(res, U, B, BPU) {
+    .Call('_scdemon_r_fw_meat', PACKAGE = 'scdemon', res, U, B, BPU)
 }
 
-r_hc0_se_Xvec <- function(X, Vs, U, TUU, B, BPU) {
-    .Call('_scdemon_r_hc0_se_Xvec', PACKAGE = 'scdemon', X, Vs, U, TUU, B, BPU)
+r_fw_bread <- function(X, U, B, BPU) {
+    .Call('_scdemon_r_fw_bread', PACKAGE = 'scdemon', X, U, B, BPU)
+}
+
+r_hc0_se_Xvec <- function(X, Vs, U, B, BPU) {
+    .Call('_scdemon_r_hc0_se_Xvec', PACKAGE = 'scdemon', X, Vs, U, B, BPU)
 }
 

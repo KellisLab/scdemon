@@ -23,20 +23,27 @@ Eigen::MatrixXd r_ols_resid(const Eigen::Map<Eigen::MatrixXd> &X,
 }
 
 // [[Rcpp::export]]
-Eigen::VectorXd r_adjust_res(const Eigen::Map<Eigen::MatrixXd> &res,
+Eigen::VectorXd r_fw_meat(const Eigen::Map<Eigen::MatrixXd> &res,
 			     const Eigen::Map<Eigen::MatrixXd> &U,
 			     const Eigen::Map<Eigen::MatrixXd> &B,
 			     const Eigen::Map<Eigen::MatrixXd> &BPU)
 {
-        return adjust_res(res, U, B, BPU);
+        return fw_meat(res, U, B, BPU);
 }
 
+// [[Rcpp::export]]
+long double r_fw_bread(const Eigen::Map<Eigen::MatrixXd> &X,
+			   const Eigen::Map<Eigen::MatrixXd> &U,
+			   const Eigen::Map<Eigen::MatrixXd> &B,
+			   const Eigen::Map<Eigen::MatrixXd> &BPU)
+{
+        return fw_bread(X, U, B, BPU);
+}
 // [[Rcpp::export]]
 Eigen::VectorXd r_hc0_se_Xvec(const Eigen::Map<Eigen::MatrixXd> &X,
 			      const Eigen::Map<Eigen::MatrixXd> &Vs,
 			      const Eigen::Map<Eigen::MatrixXd> &U,
-			      const Eigen::Map<Eigen::MatrixXd> &TUU,
 			      const Eigen::Map<Eigen::MatrixXd> &B,
 			      const Eigen::Map<Eigen::MatrixXd> &BPU) {
-        return hc0_se_Xvec(X, Vs, U, TUU, B, BPU);
+        return hc0_se_Xvec(X, Vs, U, B, BPU);
 }

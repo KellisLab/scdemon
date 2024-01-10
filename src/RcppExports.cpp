@@ -36,9 +36,9 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// r_adjust_res
-Eigen::VectorXd r_adjust_res(const Eigen::Map<Eigen::MatrixXd>& res, const Eigen::Map<Eigen::MatrixXd>& U, const Eigen::Map<Eigen::MatrixXd>& B, const Eigen::Map<Eigen::MatrixXd>& BPU);
-RcppExport SEXP _scdemon_r_adjust_res(SEXP resSEXP, SEXP USEXP, SEXP BSEXP, SEXP BPUSEXP) {
+// r_fw_meat
+Eigen::VectorXd r_fw_meat(const Eigen::Map<Eigen::MatrixXd>& res, const Eigen::Map<Eigen::MatrixXd>& U, const Eigen::Map<Eigen::MatrixXd>& B, const Eigen::Map<Eigen::MatrixXd>& BPU);
+RcppExport SEXP _scdemon_r_fw_meat(SEXP resSEXP, SEXP USEXP, SEXP BSEXP, SEXP BPUSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -46,23 +46,36 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type U(USEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type B(BSEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type BPU(BPUSEXP);
-    rcpp_result_gen = Rcpp::wrap(r_adjust_res(res, U, B, BPU));
+    rcpp_result_gen = Rcpp::wrap(r_fw_meat(res, U, B, BPU));
+    return rcpp_result_gen;
+END_RCPP
+}
+// r_fw_bread
+long double r_fw_bread(const Eigen::Map<Eigen::MatrixXd>& X, const Eigen::Map<Eigen::MatrixXd>& U, const Eigen::Map<Eigen::MatrixXd>& B, const Eigen::Map<Eigen::MatrixXd>& BPU);
+RcppExport SEXP _scdemon_r_fw_bread(SEXP XSEXP, SEXP USEXP, SEXP BSEXP, SEXP BPUSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type U(USEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type B(BSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type BPU(BPUSEXP);
+    rcpp_result_gen = Rcpp::wrap(r_fw_bread(X, U, B, BPU));
     return rcpp_result_gen;
 END_RCPP
 }
 // r_hc0_se_Xvec
-Eigen::VectorXd r_hc0_se_Xvec(const Eigen::Map<Eigen::MatrixXd>& X, const Eigen::Map<Eigen::MatrixXd>& Vs, const Eigen::Map<Eigen::MatrixXd>& U, const Eigen::Map<Eigen::MatrixXd>& TUU, const Eigen::Map<Eigen::MatrixXd>& B, const Eigen::Map<Eigen::MatrixXd>& BPU);
-RcppExport SEXP _scdemon_r_hc0_se_Xvec(SEXP XSEXP, SEXP VsSEXP, SEXP USEXP, SEXP TUUSEXP, SEXP BSEXP, SEXP BPUSEXP) {
+Eigen::VectorXd r_hc0_se_Xvec(const Eigen::Map<Eigen::MatrixXd>& X, const Eigen::Map<Eigen::MatrixXd>& Vs, const Eigen::Map<Eigen::MatrixXd>& U, const Eigen::Map<Eigen::MatrixXd>& B, const Eigen::Map<Eigen::MatrixXd>& BPU);
+RcppExport SEXP _scdemon_r_hc0_se_Xvec(SEXP XSEXP, SEXP VsSEXP, SEXP USEXP, SEXP BSEXP, SEXP BPUSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type X(XSEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Vs(VsSEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type U(USEXP);
-    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type TUU(TUUSEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type B(BSEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type BPU(BPUSEXP);
-    rcpp_result_gen = Rcpp::wrap(r_hc0_se_Xvec(X, Vs, U, TUU, B, BPU));
+    rcpp_result_gen = Rcpp::wrap(r_hc0_se_Xvec(X, Vs, U, B, BPU));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -70,8 +83,9 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_scdemon_r_ols_beta", (DL_FUNC) &_scdemon_r_ols_beta, 2},
     {"_scdemon_r_ols_resid", (DL_FUNC) &_scdemon_r_ols_resid, 3},
-    {"_scdemon_r_adjust_res", (DL_FUNC) &_scdemon_r_adjust_res, 4},
-    {"_scdemon_r_hc0_se_Xvec", (DL_FUNC) &_scdemon_r_hc0_se_Xvec, 6},
+    {"_scdemon_r_fw_meat", (DL_FUNC) &_scdemon_r_fw_meat, 4},
+    {"_scdemon_r_fw_bread", (DL_FUNC) &_scdemon_r_fw_bread, 4},
+    {"_scdemon_r_hc0_se_Xvec", (DL_FUNC) &_scdemon_r_hc0_se_Xvec, 5},
     {NULL, NULL, 0}
 };
 

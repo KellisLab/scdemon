@@ -1,11 +1,28 @@
-AC_INIT([scdemon])
+AC_INIT([scdemon], [0.0.1])
+
+AC_MSG_NOTICE([Creating VERSION file])
+echo m4_defn([AC_PACKAGE_VERSION]) > VERSION
+
+AC_CANONICAL_BUILD
+AC_CANONICAL_HOST
+AC_CANONICAL_TARGET
+
 AC_LANG([C++])
 AC_PROG_CXX
 
 AC_OPENMP
 
+AC_CHECK_PROG([R_FOUND], [R], [yes], [no])
+if test "x$R_FOUND" = xno; then
+  AC_MSG_ERROR([R is required but it's not installed.])
+fi
+AC_PROG_MAKE_SET
+
+AM_INIT_AUTOMAKE([foreign])
+AM_MAINTAINER_MODE
+
 AC_SUBST([PKG_CXXFLAGS], ["$CXXFLAGS $OPENMP_CXXFLAGS"])
 AC_SUBST([PKG_LIBS], ["$LDFLAGS $OPENMP_CXXFLAGS"]) 
 
-AC_CONFIG_FILES([src/Makevars])
+AC_CONFIG_FILES([src/Makevars Makefile])
 AC_OUTPUT

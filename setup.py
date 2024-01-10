@@ -2,8 +2,9 @@ from setuptools import setup, find_packages
 from pybind11.setup_helpers import Pybind11Extension, build_ext
 import glob
 
-__version__ = "0.0.1"
-        
+with open("VERSION", "r") as version_file:
+        __version__ = version_file.read().strip()
+
 ext_modules = [
    Pybind11Extension(
         "scdemon_ext",

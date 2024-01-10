@@ -2,9 +2,9 @@
 #define SE_HPP
 #include <Eigen/Core>
 #include <Eigen/Dense>
-#include <iostream>
+#include <Eigen/SparseCore>
 #include <algorithm>
-
+#include <vector>
 /*
  * Reminder: Y has many columns, X should have 1.
  */
@@ -30,30 +30,122 @@ Eigen::MatrixXd ols_resid(const Eigen::MatrixBase<TX> &X,
  * Additionally, allows BPU to be calculated using COD/pivoted Householder QR which will be more stable than B^{+} * U
  */
 template<typename TU, typename TB, typename TBPU>
-Eigen::VectorXd adjust_res(const Eigen::MatrixXd &res,
-			   const Eigen::MatrixBase<TU> &U,
-			   const Eigen::MatrixBase<TB> &B,
-			   const Eigen::MatrixBase<TBPU> &BPU) {
+Eigen::VectorXd fw_meat(const Eigen::MatrixXd &res,
+			const Eigen::MatrixBase<TU> &U,
+			const Eigen::MatrixBase<TB> &B,
+			const Eigen::MatrixBase<TBPU> &BPU) {
 	/* First coerce bpu_res as ncol(B) is likely very small */
+  /* todo figure out FW bread that uses the transform I - X(XX)X here */
+  /* Can we pre-multiply res times X? */
 	Eigen::MatrixXd bpu_res = (BPU * res).eval();
-	return (U * res - B * bpu_res).colwise().norm().eval();
+	return (U * res - B * bpu_res).colwise().squaredNorm().eval();
+}
+
+template<typename TU, typename TB, typename TBPU>
+long double fw_bread(const Eigen::MatrixXd &X,
+		     const Eigen::MatrixBase<TU> &U,
+		     const Eigen::MatrixBase<TB> &B,
+		     const Eigen::MatrixBase<TBPU> &BPU) {
+	/* First coerce bpu_res as ncol(B) is likely very small */
+  /* todo figure out FW bread that uses the transform I - X(XX)X here */
+  /* bread: figure out once: U * X - B * bpu_X*/
+	Eigen::MatrixXd bpu_X = (BPU * X).eval();
+	Eigen::MatrixXd adjX = U * X - B * bpu_X;
+	Eigen::MatrixXd xtx = adjX.transpose() * adjX;
+	return 1 / xtx(0, 0);
 }
 /*
  * Ideally this would be called on a KNN graph, such that each X has K neighbors in Vs.
- * BPU should be computed in the outer layer
+ * BPU should be computed in the outer layer.
+ * TODO use covariate free model for KNN graph?
+ * TODO maybe use samples of U;B (but not BPU) to calculate initial graph
+ * TODO blocks of X as well?
+ * TODO maybe simplify computation: (X^+ Y) / 
  */
-template<typename TX, typename TVs, typename TU, typename TTUU, typename TB, typename TBPU>
+template<typename TX, typename TVs, typename TU, typename TB, typename TBPU>
 Eigen::VectorXd hc0_se_Xvec(const Eigen::MatrixBase<TX> &X,
 			    const Eigen::MatrixBase<TVs> &Vs, /* Vs */
 			    const Eigen::MatrixBase<TU> &U,
-			    const Eigen::MatrixBase<TTUU> &TUU,
 			    const Eigen::MatrixBase<TB> &B,
-			    const Eigen::MatrixBase<TBPU> &BPU) {
-	const Eigen::MatrixXd betas = ols_beta(X, Vs);
-	Eigen::MatrixXd res = ols_resid(X, Vs, betas);
-	Eigen::MatrixXd bread_inv = (X.transpose() * TUU * X).eval();
-	Eigen::VectorXd ssr = adjust_res(res, U, B, BPU);
-	Eigen::VectorXd se = ssr.cwiseSqrt() / bread_inv(0, 0);
-	return betas.row(0).transpose().cwiseQuotient(se).eval();
+			    const Eigen::MatrixBase<TBPU> &BPU,
+			    Eigen::Index blockSize = 2048) {
+  /* Todo: for future,
+   * have just Vs, X_ind, and Y_ind,
+   * and calculate betas, resid iteratively.
+   * Here, take row 0 because X should be 1 feature.
+   */
+        const Eigen::VectorXd betas = ols_beta(X, Vs).row(0); 
+	/* Since X should be a column vector, res should be a matrix as well,
+	 * of dimension {length(X), length(Vs)}, i.e. 50 x 36k (ncol Vs)
+	 * TODO correct resid with dof n/(n-k)
+	 */
+	Eigen::MatrixXd resid = ols_resid(X, Vs, betas); /* parallelization: when more X, compute in block loop so still matrix not tensor */
+	/* This assumes X has only one column, i.e. {U.nrow, 1} */
+	Eigen::Matrix bpu_X = (BPU * X).eval();
+	Eigen::VectorXd Xfw = (U * X - B * bpu_X).eval(); /* target for parallelization: more X */
+
+	/* X_pinv_denom is the denominator of (Xfw+)**2,
+	 * that is, Xfw+=Xfw.T / (Xfw.T * Xfw), and Xfw.T * Xfw is a scalar,
+	 * so the squared scalar denom is computed here.
+	 */
+	double X_pinv_denom = Xfw.squaredNorm();
+	bpu_X.resize(0, 0); /* free */
+	/* Product of squares: Xfw^2 * (resid.fw)^2
+	 * which is a reordering of Xfw+ * diag(resid.fw^2) * (Xfw+).T such that
+	 * products are vectorized over all resid instead of per-resid
+	 */
+	Eigen::MatrixXd bpu_resid = (BPU * resid).eval();
+	// Eigen::VectorXd var_times_denom = (Xfw.transpose().cwiseAbs2() * (U * resid - B * bpu_resid).cwiseAbs2()).eval();
+
+	Eigen::VectorXd var_times_denom = Eigen::VectorXd::Zero(resid.cols());
+	for (Eigen::Index left = 0; left < U.rows(); left += blockSize) {
+	  Eigen::Index right = std::min(blockSize, U.rows() - left);
+	  var_times_denom += Xfw.segment(left, right).transpose().cwiseAbs2() * (U.block(left, 0, right, U.cols()) * resid 
+										 - B.block(left, 0, right, B.cols()) * bpu_resid).cwiseAbs2();
+	}
+	Eigen::VectorXd partial_se = var_times_denom.cwiseSqrt().cwiseMax(1e-300).eval();
+	bpu_resid.resize(0, 0); /* free */
+	/* Note that */
+	return (betas * X_pinv_denom).cwiseQuotient(partial_se).eval();
 }
+
+
+/* Usage: Make sure to check if empty before slicing */
+template<class T>
+std::vector<Eigen::Index> sparse_extract_inner(const Eigen::SparseCompressedBase<T> &mat,
+					       Eigen::Index outerIndex)
+{
+  std::vector<Eigen::Index> inner_nnz;
+  if (T::IsRowMajor) {
+    for (typename T::InnerIterator it(mat, outerIndex); it; ++it) {
+      inner_nnz.push_back(it.col());
+    }
+  } else {
+    for (typename T::InnerIterator it(mat, outerIndex); it; ++it) {
+      inner_nnz.push_back(it.row());
+    }
+  }
+  return inner_nnz;
+}
+// Eigen::MatrixXd hc0_se_mat(const Eigen::MatrixBase<T> &Vs,
+// 			   const Eigen::SparseCompressedBase<T> &knn,
+// 			   const Eigen::MatrixBase<TU> &U,
+// 			   const Eigen::MatrixBase<TU> &B) {
+//   Eigen::MatrixXd BPU = ols_beta(B, U);
+//   Eigen::MatrixXd TUU = U.transpose() * U;
+//   Scal outerSize = knn.outerSize();
+//   // todo split (rows, cols) by row indices.
+// #if defined(_OPENMP)
+// #pragma omp parallel for
+// #endif
+//   for (int i = 0; i < outerSize; i++) {
+
+//     std::vector<Eigen::Index> inner_nnz = sparse_extract_inner(knn, i);
+//     if (inner_nnz.size() > 0) {
+//           X = Vs.row(i);
+// 	  Eigen::MatrixBase<T> Y = Vs(inner_nnz, Eigen::placeholders::all);
+// 	  out = hc0_se_Xvec(X, Y, U, TUU, B, BPU);
+//     }
+//   }
+// }
 #endif
