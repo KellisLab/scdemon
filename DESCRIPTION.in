@@ -1,6 +1,6 @@
 Package: scdemon
 Title: scdemon
-Version: 0.0.1
+Version: @VERSION@
 Authors@R:
     c(person("Benjamin", "James", , "benjames@mit.edu", role = c("aut", "cre"),
                comment = c(ORCID = "0000-0002-6228-055X")),
