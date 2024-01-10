@@ -1,6 +1,8 @@
 # Makefile.am
 
-src/RcppExports.cpp R/RcppExports.R:
+src/RcppExports.cpp:
+        Rscript -e "Rcpp::compileAttributes()"
+R/RcppExports.R:
         Rscript -e "Rcpp::compileAttributes()"
 
 document: src/RcppExports.cpp R/RcppExports.R
