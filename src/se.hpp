@@ -143,7 +143,7 @@ Eigen::SparseMatrix<double> robust_se(const Eigen::MatrixBase<TY> &Y,
 				      const Eigen::MatrixBase<TU> &UpU,
 				      const Eigen::MatrixBase<TB> &UpB,
 				      double epsilon=1e-300,
-				      double t_cutoff=2,
+				      double t_cutoff=6.5,
 				      bool abs_cutoff=false)
 {
 	Eigen::SparseMatrix<double> M(Y.cols(), Y.cols());
