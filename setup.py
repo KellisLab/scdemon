@@ -18,14 +18,16 @@ except:
                    "OPENMP_LIBS": "-fopenmp",
                    "EIGEN_CXXFLAGS": "",
                    "EIGEN_LIBS": ""}
-    if os.getenv("CONDA_PREFIX"):
-        ### conda
-        build_flags["EIGEN_CXXFLAGS"] = "-I%s" % os.path.join(os.getenv("CONDA_PREFIX"), "include", "eigen3")
+    
+if os.getenv("CONDA_PREFIX") and build_flags["EIGEN_CXXFLAGS"] == "":
+    ### conda
+    build_flags["EIGEN_CXXFLAGS"] = "-I%s" % os.path.join(os.getenv("CONDA_PREFIX"), "include", "eigen3")
+    
 ext_modules = [
    Pybind11Extension(
         "scdemon_ext",
            sources=sorted(glob.glob("scdemon/py*.cpp")),
-           include_dirs=["src"] + eigen_dirs,
+           include_dirs=["src"],
            cxx_std=17,
            define_macros=[("VERSION_INFO", __version__)],
            extra_compile_args=[build_flags["OPENMP_CXXFLAGS"], build_flags["EIGEN_CXXFLAGS"]],
