@@ -11,7 +11,7 @@
 template<typename TX, typename TY>
 Eigen::MatrixXd ols_beta(const Eigen::MatrixBase<TX> &X, const Eigen::MatrixBase<TY> &Y)
 {
-    return X.completeOrthogonalDecomposition().solve(Y).eval();
+	return X.completeOrthogonalDecomposition().solve(Y).eval();
 }
 
 template<typename TX, typename TY, typename TB>
@@ -63,7 +63,7 @@ long double fw_bread(const Eigen::MatrixXd &X,
  * TODO maybe simplify computation: (X^+ Y) / 
  */
 template<typename TX, typename TVs, typename TU, typename TB, typename TBPU>
-Eigen::VectorXd hc0_se_Xvec(const Eigen::MatrixBase<TX> &X,
+Eigen::VectorXd old_hc0_se_Xvec(const Eigen::MatrixBase<TX> &X,
 			    const Eigen::MatrixBase<TVs> &Vs, /* Vs */
 			    const Eigen::MatrixBase<TU> &U,
 			    const Eigen::MatrixBase<TB> &B,
@@ -74,7 +74,7 @@ Eigen::VectorXd hc0_se_Xvec(const Eigen::MatrixBase<TX> &X,
    * and calculate betas, resid iteratively.
    * Here, take row 0 because X should be 1 feature.
    */
-        const Eigen::VectorXd betas = ols_beta(X, Vs).row(0); 
+	const Eigen::VectorXd betas = ols_beta(X, Vs).row(0); 
 	/* Since X should be a column vector, res should be a matrix as well,
 	 * of dimension {length(X), length(Vs)}, i.e. 50 x 36k (ncol Vs)
 	 * TODO correct resid with dof n/(n-k)
@@ -109,43 +109,82 @@ Eigen::VectorXd hc0_se_Xvec(const Eigen::MatrixBase<TX> &X,
 	return (betas * X_pinv_denom).cwiseQuotient(partial_se).eval();
 }
 
+template<typename TA, typename TB>
+Eigen::MatrixXd cbind(const Eigen::MatrixBase<TA> &A,
+		      const Eigen::MatrixBase<TB> &B)
+{
+	Eigen::MatrixXd C(A.rows(), A.cols() + B.cols());
+	C.leftCols(A.cols()) = A;
+	C.rightCols(B.cols()) = B;
+	return C;
+}
+/*
+ * TODO run regression on B first, then FW on residuals
+ * OLS y ~ B 
+ * so use B (BPU Vs) to get resid
+ */
+template<typename TY, typename TU, typename TB>
+Eigen::ArrayXd robust_se_X(const Eigen::Index &x_idx,
+			   const Eigen::MatrixBase<TY> &Y, /* V\Sigma?? */
+			   const Eigen::MatrixBase<TU> &UpU,
+			   const Eigen::MatrixBase<TB> &UpB,
+			   double epsilon=1e-300)
+{
+	Eigen::MatrixXd UpBX = cbind(UpU * Y.col(x_idx), UpB);
+	Eigen::MatrixXd BXpU = UpBX.completeOrthogonalDecomposition().pseudoInverse();
+	Eigen::MatrixXd Ur_pre = UpU - UpBX * BXpU; // Annihilator matrix in U space
+	Eigen::VectorXd var = BXpU.row(0).cwiseAbs2() * (Ur_pre * Y).cwiseAbs2();
+	Eigen::ArrayXd tval = (BXpU.row(0) * Y).array();
+	return tval * var.cwiseMax(epsilon).array().rsqrt();
+}
 
+template<typename TY, typename TU, typename TB>
+Eigen::SparseMatrix<double> robust_se(const Eigen::MatrixBase<TY> &Y,
+				      const Eigen::MatrixBase<TU> &UpU,
+				      const Eigen::MatrixBase<TB> &UpB,
+				      double epsilon=1e-300,
+				      double t_cutoff=2,
+				      bool abs_cutoff=false)
+{
+	Eigen::SparseMatrix<double> M(Y.cols(), Y.cols());
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(dynamic)
+#endif
+	for (int i = 0; i < Y.cols(); i++) {
+		Eigen::ArrayXd tv = robust_se_X(i, Y, UpU, UpB, epsilon);
+		Eigen::SparseMatrix<double> MR(Y.cols(), Y.cols());
+		for (int j = 0; j < tv.size(); j++) {
+			if (i != j) {
+				if (abs_cutoff && (t_cutoff <= -tv[j])) {
+					MR.insert(j, i) = -tv[j];
+				} else if (tv[j] >= t_cutoff) {
+					MR.insert(j, i) = tv[j];
+				}
+			}
+		}
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+		M += MR;
+	}
+	M.makeCompressed();
+	return M;
+}
 /* Usage: Make sure to check if empty before slicing */
 template<class T>
 std::vector<Eigen::Index> sparse_extract_inner(const Eigen::SparseCompressedBase<T> &mat,
 					       Eigen::Index outerIndex)
 {
-  std::vector<Eigen::Index> inner_nnz;
-  if (T::IsRowMajor) {
-    for (typename T::InnerIterator it(mat, outerIndex); it; ++it) {
-      inner_nnz.push_back(it.col());
-    }
-  } else {
-    for (typename T::InnerIterator it(mat, outerIndex); it; ++it) {
-      inner_nnz.push_back(it.row());
-    }
-  }
-  return inner_nnz;
+	std::vector<Eigen::Index> inner_nnz;
+	if (T::IsRowMajor) {
+		for (typename T::InnerIterator it(mat, outerIndex); it; ++it) {
+			inner_nnz.push_back(it.col());
+		}
+	} else {
+		for (typename T::InnerIterator it(mat, outerIndex); it; ++it) {
+			inner_nnz.push_back(it.row());
+		}
+	}
+	return inner_nnz;
 }
-// Eigen::MatrixXd hc0_se_mat(const Eigen::MatrixBase<T> &Vs,
-// 			   const Eigen::SparseCompressedBase<T> &knn,
-// 			   const Eigen::MatrixBase<TU> &U,
-// 			   const Eigen::MatrixBase<TU> &B) {
-//   Eigen::MatrixXd BPU = ols_beta(B, U);
-//   Eigen::MatrixXd TUU = U.transpose() * U;
-//   Scal outerSize = knn.outerSize();
-//   // todo split (rows, cols) by row indices.
-// #if defined(_OPENMP)
-// #pragma omp parallel for
-// #endif
-//   for (int i = 0; i < outerSize; i++) {
-
-//     std::vector<Eigen::Index> inner_nnz = sparse_extract_inner(knn, i);
-//     if (inner_nnz.size() > 0) {
-//           X = Vs.row(i);
-// 	  Eigen::MatrixBase<T> Y = Vs(inner_nnz, Eigen::placeholders::all);
-// 	  out = hc0_se_Xvec(X, Y, U, TUU, B, BPU);
-//     }
-//   }
-// }
 #endif

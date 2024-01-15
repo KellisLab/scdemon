@@ -24,7 +24,7 @@ site:
 	Rscript -e "pkgdown::build_site(preview=FALSE)"
 
 
-all-local: loadall document buildsrc buildbin install test site
+all-local: document buildsrc buildbin install test site
 
 clean-local:
 	rm -f src/*.o src/*.so

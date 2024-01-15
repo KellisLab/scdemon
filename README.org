@@ -44,8 +44,8 @@ BigCLAM/Leiden
 ***** leiden(resolution) or bigclam(ncomm)
 ** large to-dos (ordered by importance)
 *** DONE C++ demo code linked to python and R
-*** TODO HC0 SE in C++
-**** Eigen::MatrixBase<T> type
+*** DONE HC0 SE in C++
+**** DONE Eigen::MatrixBase<T> type
 *** TODO KNN interface in R/Python
 **** Sparse matrix conversion: 0/1 indexing
 *** TODO pkgdown website

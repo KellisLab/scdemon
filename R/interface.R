@@ -84,26 +84,47 @@ fw_bread <- function(X, U=NULL, B=NULL, BPU=NULL) {
     stopifnot(ncol(BPU)==ncol(U))
     return(r_fw_bread(X, U, B, BPU))
 }
-#' Calculate HC0 SE using U as a transform, and B as a covariate matrix.
+
+#' Calculate HC0 SE per-row
 #' @export
 #' @useDynLib scdemon
 #' @importFrom Rcpp evalCpp
-hc0_se_Xvec <- function(X, Y, U=NULL, B=NULL, BPU=NULL) {
-    stopifnot(nrow(X)==nrow(Y))
-    if (is.null(U)) {
-        U = diag(nrow(Y))
-    }
-    stopifnot(ncol(U)==nrow(Y))
+robust_se_X <- function(cname, Y, UpU, UpB) {
+    stopifnot(cname %in% colnames(Y))
+    stopifnot(nrow(Y) == nrow(UpU))
+    stopifnot(nrow(Y) == ncol(UpU))
+    stopifnot(nrow(Y) == nrow(UpB))
+    setNames(r_robust_se_X(match(cname, colnames(Y)) - 1, Y, UpU, UpB), colnames(Y))
+}
+
+
+#' Calculate robust standard errors.
+#' Pass U, V such that X=UV
+#' @param U Observation decomposition
+#' @param V Variable decomposition
+#' @param B Covariates/batch effects. Uses just intercept if NULL
+#' @param t_cutoff Cutoff to add to matrix. If default, uses nominal_p_cutoff
+#' @param abs_t Whether to include items Pr>|t| or just Pr>t
+#' @param nominal_p_cutoff Cutoff to include items for automatic filtering.
+#' @return Sparse matrix of t-values, or absolute-value t-values if abs_t=T
+#' @export
+#' @useDynLib scdemon
+#' @importFrom Rcpp evalCpp
+robust_se <- function(U, V, B=NULL, t_cutoff=NULL, abs_t=FALSE, nominal_p_cutoff=0.05) {
+    stopifnot(ncol(U)==nrow(V))
     if (is.null(B)) {
-        B = matrix(1, nrow=nrow(U), ncol=1)
+        B = matrix(1, nrow=nrow(U))
     }
-    stopifnot(is.matrix(B))
-    stopifnot(nrow(B)==nrow(U))
-    if (is.null(BPU)) {
-        BPU = MASS::ginv(B) %*% U
+    stopifnot(nrow(U)==nrow(B))
+    if (is.null(t_cutoff)) {
+        ## should be around 6.5 for most snRNA-seq datasets
+        t_cutoff = qt(nominal_p_cutoff * ncol(V)**-2,
+                      nrow(B)-ncol(B),
+                      lower.tail=FALSE)
     }
-    stopifnot(is.matrix(BPU))
-    stopifnot(nrow(BPU)==ncol(B))
-    stopifnot(ncol(BPU)==ncol(U))
-    return(r_hc0_se_Xvec(X, Y, U, B, BPU))
+    UpU = ols_beta(U, U);
+    UpB = ols_beta(U, B);
+    M = r_robust_se(V, UpU, UpB, t_cutoff, abs_t);
+    dimnames(M) = list(colnames(V), colnames(V));
+    return(M);
 }

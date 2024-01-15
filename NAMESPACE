@@ -2,8 +2,9 @@
 
 export(fw_bread)
 export(fw_meat)
-export(hc0_se_Xvec)
 export(ols_beta)
 export(ols_resid)
+export(robust_se)
+export(robust_se_X)
 importFrom(Rcpp,evalCpp)
 useDynLib(scdemon)

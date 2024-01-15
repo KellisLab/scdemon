@@ -17,7 +17,15 @@ r_fw_bread <- function(X, U, B, BPU) {
     .Call('_scdemon_r_fw_bread', PACKAGE = 'scdemon', X, U, B, BPU)
 }
 
-r_hc0_se_Xvec <- function(X, Vs, U, B, BPU) {
-    .Call('_scdemon_r_hc0_se_Xvec', PACKAGE = 'scdemon', X, Vs, U, B, BPU)
+r_cbind <- function(X, Y) {
+    .Call('_scdemon_r_cbind', PACKAGE = 'scdemon', X, Y)
+}
+
+r_robust_se_X <- function(x_idx, Y, UpU, UpB) {
+    .Call('_scdemon_r_robust_se_X', PACKAGE = 'scdemon', x_idx, Y, UpU, UpB)
+}
+
+r_robust_se <- function(Y, UpU, UpB, t_cutoff = 2, abs_cutoff = FALSE) {
+    .Call('_scdemon_r_robust_se', PACKAGE = 'scdemon', Y, UpU, UpB, t_cutoff, abs_cutoff)
 }
 
