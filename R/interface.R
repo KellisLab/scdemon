@@ -6,7 +6,7 @@ robust_se <- function(obj, ...) {
 
 .extract_covariates <- function(covariates, df) {
     if (is.null(covariates)) {
-        return(model.matrix(~, data=df))
+        return(model.matrix(~1, data=df))
     } else if (is.formula(covariates)) {
         return(model.matrix(covariates, data=df))
     } else if (is.vector(covariates)) {
@@ -15,7 +15,7 @@ robust_se <- function(obj, ...) {
         return(covariates)
     } else {
         cat("Covariates are unknown form. Returning empty model.\n")
-        return(model.matrix(~, data=df))
+        return(model.matrix(~1, data=df))
     }
 }
 

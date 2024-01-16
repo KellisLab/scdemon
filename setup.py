@@ -30,8 +30,8 @@ ext_modules = [
            include_dirs=["src"],
            cxx_std=17,
            define_macros=[("VERSION_INFO", __version__)],
-           extra_compile_args=[build_flags["OPENMP_CXXFLAGS"], build_flags["EIGEN_CXXFLAGS"]],
-           extra_link_args=[build_flags["OPENMP_LIBS"], build_flags["EIGEN_LIBS"]]
+           extra_compile_args=[build_flags["OPENMP_CXXFLAGS"] + " " + build_flags["EIGEN_CXXFLAGS"]],
+           extra_link_args=[build_flags["OPENMP_LIBS"] + " " + build_flags["EIGEN_LIBS"]]
     ),
 ]
 
