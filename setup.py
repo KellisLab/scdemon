@@ -6,7 +6,10 @@ import os
 with open("VERSION", "r") as version_file:
         __version__ = version_file.read().strip()
 
-build_flags = {}        
+build_flags = {"OPENMP_CXXFLAGS": "-fopenmp",
+               "OPENMP_LIBS": "-fopenmp",
+               "EIGEN_CXXFLAGS": "",
+               "EIGEN_LIBS": ""}
 try:
     with open("src/Makevars", "r") as makevars:
         for line in makevars:
@@ -14,11 +17,8 @@ try:
             if len(parts) == 2:
                 build_flags[parts[0]] = parts[1]
 except:
-    build_flags = {"OPENMP_CXXFLAGS": "-fopenmp",
-                   "OPENMP_LIBS": "-fopenmp",
-                   "EIGEN_CXXFLAGS": "",
-                   "EIGEN_LIBS": ""}
-    
+    pass
+
 if os.getenv("CONDA_PREFIX") and build_flags["EIGEN_CXXFLAGS"] == "":
     ### conda
     build_flags["EIGEN_CXXFLAGS"] = "-I%s" % os.path.join(os.getenv("CONDA_PREFIX"), "include", "eigen3")

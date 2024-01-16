@@ -11,13 +11,13 @@ AC_LANG([C++])
 AC_PROG_CXX
 
 PKG_PROG_PKG_CONFIG
-PKG_CHECK_MODULES([EIGEN], [eigen3 >= 3.3], [], [AC_MSG_WARN([Eigen flags may not be set for python])])
+PKG_CHECK_MODULES([EIGEN], [eigen3 >= 3.4.0], [], [AC_MSG_WARN([Eigen flags may not be set for python])])
 
 AC_OPENMP
 
 AC_CHECK_PROG([R_FOUND], [R], [yes], [no])
 if test "x$R_FOUND" = xno; then
-  AC_MSG_ERROR([R is required but it's not installed.])
+  AC_MSG_WARN([R is not installed.])
 fi
 AC_PROG_MAKE_SET
 
@@ -31,5 +31,5 @@ AC_SUBST([EIGEN_LIBS], ["$EIGEN_LIBS"])
 AC_SUBST([OPENMP_CXXFLAGS], ["$OPENMP_CXXFLAGS"])
 AC_SUBST([OPENMP_LIBS], ["$OPENMP_CXXFLAGS"])
 
-AC_CONFIG_FILES([src/Makevars Makefile DESCRIPTION docs/sphinx/conf.py.in])
+AC_CONFIG_FILES([src/Makevars Makefile DESCRIPTION docs/sphinx/conf.py])
 AC_OUTPUT
