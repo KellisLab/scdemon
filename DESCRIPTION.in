@@ -20,5 +20,5 @@ Suggests:
     anndataR,
 Config/testthat/edition: 3
 LazyData: true
-LinkingTo: Rcpp, RcppEigen
+LinkingTo: Rcpp, RcppEigen, RcppProgress
 SystemRequirements: C++17

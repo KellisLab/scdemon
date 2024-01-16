@@ -7,9 +7,9 @@ robust_se <- function(obj, ...) {
 .extract_covariates <- function(covariates, df) {
     if (is.null(covariates)) {
         return(model.matrix(~1, data=df))
-    } else if (is.formula(covariates)) {
+    } else if (class(covariates)=="formula") {
         return(model.matrix(covariates, data=df))
-    } else if (is.vector(covariates)) {
+    } else if (class(covariates)=="character") {
         return(model.matrix(as.formula(paste0("~", paste0(covariates, collapse="+"))), df))
     } else if (is.matrix(covariates)) {
         return(covariates)
@@ -20,9 +20,9 @@ robust_se <- function(obj, ...) {
 }
 
 #' @export
-robust_se.AbstractAnnData <- function(obj, method="pca",
+robust_se.AbstractAnnData <- function(obj, covariates=NULL,
+                                      method="pca",
                                       key_added="scdemon",
-                                      covariates=NULL,
                                       nominal_p_cutoff=0.05,
                                       t_cutoff=NULL, abs_t=FALSE) {
     if (length(method) == 2) {
