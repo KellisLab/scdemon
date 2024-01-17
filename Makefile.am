@@ -25,6 +25,7 @@ site:
 
 AM_CXXFLAGS = @EIGEN_CXXFLAGS@ @OPENMP_CXXFLAGS@ @HDF5_CXXFLAGS@
 
+bin_PROGRAMS = 
 if ENABLE_CXX_TEST
 	bin_PROGRAMS += bin/scdemon
 	bin_scdemon_SOURCES = bin/scdemon.cpp
