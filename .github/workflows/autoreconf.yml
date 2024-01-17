@@ -15,7 +15,7 @@ jobs:
         ref: 'dev'
 
     - name: Set up Autotools
-      run: sudo apt-get update && sudo apt-get install -y autoconf automake libtool sed r-base r-cran-rcppeigen g++ libeigen3-dev python3-pybind11 
+      run: sudo apt-get update && sudo apt-get install -y autoconf automake libtool sed r-base r-cran-rcppeigen g++ libeigen3-dev python3-pybind11 libgsl-dev
 
     - name: Run autoreconf
       run: |
@@ -32,6 +32,6 @@ jobs:
       run: |
         git config --global user.name 'GitHub Action'
         git config --global user.email 'action@github.com'
-        git add config.guess config.sub configure configure.ac Makefile.in Makefile.am install-sh aclocal.m4 missing DESCRIPTION
+        git add config.guess config.sub configure configure.ac Makefile.in Makefile.am install-sh aclocal.m4 missing depcomp DESCRIPTION
         git commit -m "Auto-update Autotools files" || echo "No changes to commit"
         git push origin HEAD:main -f

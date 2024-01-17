@@ -13,7 +13,7 @@ AC_PROG_CXX
 PKG_PROG_PKG_CONFIG
 PKG_CHECK_MODULES([EIGEN], [eigen3 >= 3.3.9], [], [AC_MSG_WARN([Eigen flags may not be set for python])])
 PKG_CHECK_MODULES([HDF5], [hdf5], [], [AC_MSG_WARN([HDF5 may not be set for testing])])
-PKG_CHECK_MODULES([GSL], [gsl], [], [AC_MSG_WARN([GSL may not be included])])
+PKG_CHECK_MODULES([GSL], [gsl], [], [AC_MSG_ERROR([GSL is required, please install])])
 AC_OPENMP
 
 AC_CHECK_PROG([R_FOUND], [R], [yes], [no])
@@ -24,6 +24,14 @@ AC_PROG_MAKE_SET
 
 AM_INIT_AUTOMAKE([foreign subdir-objects])
 AM_MAINTAINER_MODE
+
+
+AC_ARG_ENABLE([cxxtest],
+    [AS_HELP_STRING([--enable-cxxtest], [Enable the compilation of c++ binary])],
+    [cxxtest=$enableval],
+    [cxxtest=no])
+
+AM_CONDITIONAL([ENABLE_CXX_TEST], [test "x$cxxtest" = "xyes"])
 
 AC_SUBST([PKG_CXXFLAGS], ["$CXXFLAGS $OPENMP_CXXFLAGS $GSL_CFLAGS"])
 AC_SUBST([PKG_LIBS], ["$LDFLAGS $OPENMP_CXXFLAGS $GSL_LIBS"]) 
