@@ -3,8 +3,13 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/SparseCore>
+
+#include <gsl/gsl_statistics.h>
+#include <gsl/gsl_cdf.h>
+
 #include <algorithm>
 #include <vector>
+
 /*
  * Reminder: Y has many columns, X should have 1.
  */
@@ -159,6 +164,58 @@ Eigen::SparseMatrix<double> robust_se(const Eigen::MatrixBase<TY> &Y,
 					MR.insert(j, i) = -tv[j];
 				} else if (tv[j] >= t_cutoff) {
 					MR.insert(j, i) = tv[j];
+				}
+			}
+		}
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+		M += MR;
+	}
+	M.makeCompressed();
+	return M;
+}
+
+template<typename T>
+Eigen::ArrayXd cwiseVar(const Eigen::MatrixBase<T> &Y)
+{
+	Eigen::VectorXd means = Y.colwise().mean().eval();
+	return (Y - means).array().square().colwise().sum() / Y.rows();
+}
+
+template<typename TY, typename TU, typename TB, typename TD>
+Eigen::SparseMatrix<double> robust_se_pvalue(const Eigen::MatrixBase<TY> &Y,
+					     const Eigen::MatrixBase<TU> &UpU,
+					     const Eigen::MatrixBase<TB> &UpB,
+					     const Eigen::ArrayBase<TD> &dof,
+					     double nominal_p_cutoff=0.05,
+					     bool abs_cutoff=false,
+					     double epsilon=1e-300)
+{
+	Eigen::SparseMatrix<double> M(Y.cols(), Y.cols());
+	// Eigen::ArrayXd var = cwiseVar(Y) / (dof + 1);
+	double adj_p_cutoff = nominal_p_cutoff / (Y.cols()*Y.cols());
+#if defined(_OPENMP)
+#pragma omp parallel for schedule(dynamic)
+#endif
+	for (int i = 0; i < Y.cols(); i++) {
+		// Welch–Satterthwaite equation
+		//Eigen::ArrayXd adj_dof = (var + var(i)).square() / (var.square() / dof + var(i)*var(i)/dof(i)).max(epsilon);
+		Eigen::ArrayXd tv = robust_se_X(i, Y, UpU, UpB, epsilon);
+		Eigen::SparseMatrix<double> MR(Y.cols(), Y.cols());
+		for (int j = 0; j < tv.size(); j++) {
+			if (i != j) {
+				double pval = 1;
+				if (abs_cutoff && (tv[j] < 0)) {
+					pval = gsl_cdf_tdist_P(tv[j], dof(j));
+				} else {
+					pval = gsl_cdf_tdist_Q(tv[j], dof(j));
+				}
+				if (abs_cutoff) {
+					pval = 2 * pval;
+				}
+				if (pval < adj_p_cutoff) {
+					MR.insert(j, i) = std::max(pval, epsilon);
 				}
 			}
 		}

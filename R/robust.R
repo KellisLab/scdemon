@@ -98,7 +98,7 @@ robust_se_X <- function(cname, Y, UpU, UpB) {
 }
 
 
-#' Calculate robust standard errors.
+#' Calculate robust standard error t-values.
 #' Pass U, V such that X=UV
 #' @param U Observation decomposition
 #' @param V Variable decomposition
@@ -110,21 +110,66 @@ robust_se_X <- function(cname, Y, UpU, UpB) {
 #' @export
 #' @useDynLib scdemon
 #' @importFrom Rcpp evalCpp
-robust_se.default <- function(U, V, B=NULL, t_cutoff=NULL, abs_t=FALSE, nominal_p_cutoff=0.05) {
+robust_se_t.default <- function(U, V, B=NULL, t_cutoff=NULL,
+                                nominal_p_cutoff=0.05,
+                                abs_t=FALSE,
+                                n_components=NULL) {
     stopifnot(ncol(U)==nrow(V))
+    if (!is.na(n_components) & (n_components > 0)) {
+        U = U[ ,1:n_components, drop=FALSE]
+        V = V[1:n_components, , drop=FALSE]
+    }
     if (is.null(B)) {
         B = matrix(1, nrow=nrow(U))
     }
     stopifnot(nrow(U)==nrow(B))
+    UpU = ols_beta(U, U);
+    UpB = ols_beta(U, B);
     if (is.null(t_cutoff)) {
         ## should be around 6.5 for most snRNA-seq datasets
         t_cutoff = qt(nominal_p_cutoff * ncol(V)**-2,
                       nrow(B)-ncol(B),
                       lower.tail=FALSE)
     }
+    M = r_robust_se(V, UpU, UpB, t_cutoff, abs_t);
+    dimnames(M) = list(colnames(V), colnames(V));
+    return(M);
+}
+
+
+#' Calculate robust standard error p-values.
+#' Pass U, V such that X=UV
+#' @param U Observation decomposition
+#' @param V Variable decomposition
+#' @param B Covariates/batch effects. Uses just intercept if NULL
+#' @param nnz Number of nonzero entries per column of V, used for dof calculation.
+#' @param abs_t Whether to include items Pr>|t| or just Pr>t
+#' @param nominal_p_cutoff Cutoff to include items for automatic filtering.
+#' @return Sparse matrix of p-values
+#' @export
+#' @useDynLib scdemon
+#' @importFrom Rcpp evalCpp
+robust_se_p.default <- function(U, V, B=NULL, nnz=NULL,
+                                nominal_p_cutoff=0.05,
+                                abs_t=FALSE,
+                                n_components=NULL) {
+    stopifnot(ncol(U)==nrow(V))
+    if (!is.null(n_components) & !is.na(n_components) & (n_components > 0)) {
+        U = U[ ,1:n_components, drop=FALSE]
+        V = V[1:n_components, , drop=FALSE]
+    }
+    if (is.null(B)) {
+        B = matrix(1, nrow=nrow(U))
+    }
+    stopifnot(nrow(U)==nrow(B))
     UpU = ols_beta(U, U);
     UpB = ols_beta(U, B);
-    M = r_robust_se(V, UpU, UpB, t_cutoff, abs_t);
+    if (is.null(nnz)) {
+        ## By default, just use all , but filter as norm approaches zero
+        nnz = nrow(U) * (apply(V, 2, norm, "2") > 1e-10)
+    }
+    dof = pmax(nnz - ncol(B), 1)
+    M = r_robust_se_p(V, UpU, UpB, dof, nominal_p_cutoff, abs_t);
     dimnames(M) = list(colnames(V), colnames(V));
     return(M);
 }

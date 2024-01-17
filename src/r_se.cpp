@@ -7,6 +7,7 @@
 
 #include "se.hpp"
 
+  
 // [[Rcpp::export]]
 Eigen::MatrixXd r_ols_beta(const Eigen::Map<Eigen::MatrixXd> &X,
 			   const Eigen::Map<Eigen::MatrixXd> &Y)
@@ -65,3 +66,13 @@ Eigen::SparseMatrix<double> r_robust_se(const Eigen::Map<Eigen::MatrixXd> &Y,
 	return robust_se(Y, UpU, UpB, 1e-300, t_cutoff, abs_cutoff);
 }
 			   
+
+// [[Rcpp::export]]
+Eigen::SparseMatrix<double> r_robust_se_p(const Eigen::Map<Eigen::MatrixXd> &Y,
+					  const Eigen::Map<Eigen::MatrixXd> &UpU,
+					  const Eigen::Map<Eigen::MatrixXd> &UpB,
+					  const Eigen::Map<Eigen::ArrayXd> &dof,
+					  double nominal_p_cutoff=0.05, bool abs_cutoff=false)
+{
+	return robust_se_pvalue(Y, UpU, UpB, dof, nominal_p_cutoff, abs_cutoff, 1e-300);
+}

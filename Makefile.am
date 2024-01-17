@@ -23,9 +23,14 @@ test:
 site:
 	Rscript -e "pkgdown::build_site(preview=FALSE)"
 
+bin_PROGRAMS = bin/scdemon
+bin_scdemon_SOURCES = bin/scdemon.cpp
+bin_scdemon_LDADD = @EIGEN_LIBS@ @OPENMP_LIBS@ @HDF5_LIBS@
+AM_CXXFLAGS = @EIGEN_CXXFLAGS@ @OPENMP_CXXFLAGS@ @HDF5_CXXFLAGS@
 
 all-local: document buildsrc buildbin install test site
 
 clean-local:
 	rm -f src/*.o src/*.so
 	rm -f src/RcppExports.cpp R/RcppExports.R
+	rm -f bin/scdemon bin/scdemon.o
