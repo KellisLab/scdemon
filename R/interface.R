@@ -4,6 +4,7 @@ robust_se_p <- function(obj, ...) {
     UseMethod(generic="robust_se_p", object=obj)
 }
 
+#' @export
 robust_se_t <- function(obj, ...) {
     UseMethod(generic="robust_se_t", object=obj)
 }
