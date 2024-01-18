@@ -195,6 +195,10 @@ Eigen::SparseMatrix<double> robust_se_pvalue(const Eigen::MatrixBase<TY> &Y,
 	Eigen::SparseMatrix<double> M(Y.cols(), Y.cols());
 	// Eigen::ArrayXd var = cwiseVar(Y) / (dof + 1);
 	double adj_p_cutoff = nominal_p_cutoff / (Y.cols()*Y.cols());
+	Eigen::ArrayXd t_cutoff(Y.cols());
+	for (int i = 0; i < Y.cols(); i++) {
+		t_cutoff(i) = gsl_cdf_tdist_Qinv(adj_p_cutoff, dof(i));
+	}
 #if defined(_OPENMP)
 #pragma omp parallel for schedule(dynamic)
 #endif
@@ -206,9 +210,9 @@ Eigen::SparseMatrix<double> robust_se_pvalue(const Eigen::MatrixBase<TY> &Y,
 		for (int j = 0; j < tv.size(); j++) {
 			if (i != j) {
 				double pval = 1;
-				if (abs_cutoff && (tv[j] < 0)) {
+				if (abs_cutoff && (tv[j] <= -t_cutoff(j))) {
 					pval = gsl_cdf_tdist_P(tv[j], dof(j));
-				} else {
+				} else if (tv[j] >= t_cutoff(j)) {
 					pval = gsl_cdf_tdist_Q(tv[j], dof(j));
 				}
 				if (abs_cutoff) {
