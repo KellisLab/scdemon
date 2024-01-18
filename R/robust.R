@@ -115,7 +115,8 @@ robust_se_t.default <- function(U, V, B=NULL, t_cutoff=NULL,
                                 abs_t=FALSE,
                                 n_components=NULL) {
     stopifnot(ncol(U)==nrow(V))
-    if (!is.na(n_components) & (n_components > 0)) {
+    if (!is.null(n_components)) {
+        stopifnot(n_components > 0)
         U = U[ ,1:n_components, drop=FALSE]
         V = V[1:n_components, , drop=FALSE]
     }

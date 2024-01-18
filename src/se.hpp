@@ -153,7 +153,7 @@ Eigen::SparseMatrix<double> robust_se(const Eigen::MatrixBase<TY> &Y,
 {
 	Eigen::SparseMatrix<double> M(Y.cols(), Y.cols());
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(static, 100)
 #endif
 	for (int i = 0; i < Y.cols(); i++) {
 		Eigen::ArrayXd tv = robust_se_X(i, Y, UpU, UpB, epsilon);
@@ -170,7 +170,10 @@ Eigen::SparseMatrix<double> robust_se(const Eigen::MatrixBase<TY> &Y,
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
-		M += MR;
+		{
+		  if (i % 100 == 0) { std::cout << i << "/" << Y.cols() << std::endl; }
+		  M += MR;
+		}
 	}
 	M.makeCompressed();
 	return M;
@@ -200,7 +203,7 @@ Eigen::SparseMatrix<double> robust_se_pvalue(const Eigen::MatrixBase<TY> &Y,
 		t_cutoff(i) = gsl_cdf_tdist_Qinv(adj_p_cutoff, dof(i));
 	}
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(static, 100)
 #endif
 	for (int i = 0; i < Y.cols(); i++) {
 		// Welch–Satterthwaite equation
@@ -226,7 +229,10 @@ Eigen::SparseMatrix<double> robust_se_pvalue(const Eigen::MatrixBase<TY> &Y,
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
-		M += MR;
+		{
+		  if (i % 100 == 0) { std::cout << i << "/" << Y.cols() << std::endl; }
+		  M += MR;
+		}
 	}
 	M.makeCompressed();
 	return M;
