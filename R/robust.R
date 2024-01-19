@@ -128,7 +128,7 @@ robust_se_t.default <- function(U, V, B=NULL, t_cutoff=NULL,
     UpB = ols_beta(U, B);
     if (is.null(t_cutoff)) {
         ## should be around 6.5 for most snRNA-seq datasets
-        t_cutoff = qt(nominal_p_cutoff * ncol(V)**-2,
+        t_cutoff = qt(max(nominal_p_cutoff * ncol(V)**-2, 1),
                       nrow(B)-ncol(B),
                       lower.tail=FALSE)
     }
