@@ -7,6 +7,9 @@
 #' @useDynLib scdemon
 #' @importFrom Rcpp evalCpp
 ols_beta <- function(X, Y) {
+    if (Matrix::isDiagonal(X)) {
+        return(Matrix::Diagonal(x=1/Matrix::diag(X)) %*% Y)
+    }
     X = as.matrix(X)
     if (!is.null(nrow(Y))) {
         stopifnot(nrow(X)==nrow(Y))

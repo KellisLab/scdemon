@@ -45,10 +45,10 @@ robust_se_t.AbstractAnnData <- function(obj, covariates=NULL,
         V = diag(x=s) %*% t(obj$varm$LSI)
     } else if (method == "X") {
         V = obj$X
-        U = diag(nrow(V))
+        U = Matrix::Diagonal(n=nrow(V))
     } else if (method %in% names(obj$layers)) {
         V = obj$layers[[method]]
-        U = diag(nrow(V))
+        U = Matrix::Diagonal(n=nrow(V))
     } else {
         stop(paste0("Unknown method ", paste0(method, collapse=" ")))
     }
@@ -85,10 +85,10 @@ robust_se_p.AbstractAnnData <- function(obj, covariates=NULL,
         V = diag(x=s) %*% t(obj$varm$LSI)
     } else if (method == "X") {
         V = obj$X
-        U = diag(nrow(V))
+        U = Matrix::Diagonal(n=nrow(V))
     } else if (method %in% names(obj$layers)) {
         V = obj$layers[[method]]
-        U = diag(nrow(V))
+        U = Matrix::Diagonal(n=nrow(V))
     } else {
         stop(paste0("Unknown method ", paste0(method, collapse=" ")))
     }
