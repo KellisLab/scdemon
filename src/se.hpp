@@ -176,8 +176,13 @@ Eigen::SparseMatrix<double> robust_se(const Eigen::MatrixBase<TY> &Y,
 			  M += MR;
 		}
 	}
-	M.makeCompressed();
-	return M;
+	if (!p.check_abort()) {
+		M.makeCompressed();
+		return M;
+	} else {
+		Eigen::SparseMatrix<double> Mbad(Y.cols(), Y.cols());
+		return Mbad;
+	}
 }
 
 template<typename T>
@@ -233,8 +238,13 @@ Eigen::SparseMatrix<double> robust_se_pvalue(const Eigen::MatrixBase<TY> &Y,
 			M += MR;
 		}
 	}
-	M.makeCompressed();
-	return M;
+	if (!p.check_abort()) {
+		M.makeCompressed();
+		return M;
+	} else {
+		Eigen::SparseMatrix<double> Mbad(Y.cols(), Y.cols());
+		return Mbad;
+	}
 }
 /* Usage: Make sure to check if empty before slicing */
 template<class T>
