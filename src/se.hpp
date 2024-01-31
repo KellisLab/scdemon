@@ -153,27 +153,32 @@ Eigen::SparseMatrix<double> robust_se(const Eigen::MatrixBase<TY> &Y,
 	Eigen::SparseMatrix<double> M(Y.cols(), Y.cols());
 	ImplProgress p(Y.cols());
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 100)
+#pragma omp parallel 
 #endif
-	for (int i = 0; i < Y.cols(); i++) {
-		if (!p.check_abort()) {
-		        p.increment();
-			Eigen::ArrayXd tv = robust_se_X(i, Y, epsilon);
-			Eigen::SparseMatrix<double> MR(Y.cols(), Y.cols());
-			for (int j = 0; j < tv.size(); j++) {
-				if (i != j) {
-					if (abs_cutoff && (t_cutoff <= -tv[j])) {
-						MR.insert(j, i) = -tv[j];
-					} else if (tv[j] >= t_cutoff) {
-						MR.insert(j, i) = tv[j];
+	{
+		Eigen::SparseMatrix<double> local_mat(Y.cols(), Y.cols());
+#if defined(_OPENMP)
+#pragma omp for nowait
+#endif
+		for (int i = 0; i < Y.cols(); i++) {
+			if (!p.check_abort()) {
+		        	p.increment();
+				Eigen::ArrayXd tv = robust_se_X(i, Y, epsilon);
+				for (int j = 0; j < tv.size(); j++) {
+					if (i != j) {
+						if (abs_cutoff && (t_cutoff <= -tv[j])) {
+							local_mat.insert(j, i) = -tv[j];
+						} else if (tv[j] >= t_cutoff) {
+							local_mat.insert(j, i) = tv[j];
+						}
 					}
 				}
 			}
+		}
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
-			  M += MR;
-		}
+		M += local_mat;
 	}
 	if (!p.check_abort()) {
 		M.makeCompressed();
@@ -206,34 +211,39 @@ Eigen::SparseMatrix<double> robust_se_pvalue(const Eigen::MatrixBase<TY> &Y,
 		t_cutoff(i) = gsl_cdf_tdist_Qinv(adj_p_cutoff, dof(i));
 	}
 #if defined(_OPENMP)
-#pragma omp parallel for schedule(static, 100)
+#pragma omp parallel 
 #endif
-	for (int i = 0; i < Y.cols(); i++) {
-		if (!p.check_abort()) {
-			p.increment();
-			Eigen::ArrayXd tv = robust_se_X(i, Y, epsilon);
-			Eigen::SparseMatrix<double> MR(Y.cols(), Y.cols());
-			for (int j = 0; j < tv.size(); j++) {
-				if (i != j) {
-					double pval = 1;
-					if (abs_cutoff && (tv[j] <= -t_cutoff(j))) {
-						pval = gsl_cdf_tdist_P(tv[j], dof(j));
-					} else if (tv[j] >= t_cutoff(j)) {
-						pval = gsl_cdf_tdist_Q(tv[j], dof(j));
-					}
-					if (abs_cutoff) {
-						pval = 2 * pval;
-					}
-					if (pval < adj_p_cutoff) {
-						MR.insert(j, i) = std::max(pval, epsilon);
+	{
+		Eigen::SparseMatrix<double> local_mat(Y.cols(), Y.cols());
+#if defined(_OPENMP)
+#pragma omp for nowait
+#endif
+		for (int i = 0; i < Y.cols(); i++) {
+			if (!p.check_abort()) {
+				p.increment();
+				Eigen::ArrayXd tv = robust_se_X(i, Y, epsilon);
+				for (int j = 0; j < tv.size(); j++) {
+					if (i != j) {
+						double pval = 1;
+						if (abs_cutoff && (tv[j] <= -t_cutoff(j))) {
+							pval = gsl_cdf_tdist_P(tv[j], dof(j));
+						} else if (tv[j] >= t_cutoff(j)) {
+							pval = gsl_cdf_tdist_Q(tv[j], dof(j));
+						}
+						if (abs_cutoff) {
+							pval = 2 * pval;
+						}
+						if (pval < adj_p_cutoff) {
+							local_mat.insert(j, i) = std::max(pval, epsilon);
+						}
 					}
 				}
 			}
+		}
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
-			M += MR;
-		}
+		M += local_mat;
 	}
 	if (!p.check_abort()) {
 		M.makeCompressed();
