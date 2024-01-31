@@ -92,12 +92,9 @@ fw_bread <- function(X, U=NULL, B=NULL, BPU=NULL) {
 #' @export
 #' @useDynLib scdemon
 #' @importFrom Rcpp evalCpp
-robust_se_X <- function(cname, Y, UpU, UpB) {
+robust_se_X <- function(cname, Y) {
     stopifnot(cname %in% colnames(Y))
-    stopifnot(nrow(Y) == nrow(UpU))
-    stopifnot(nrow(Y) == ncol(UpU))
-    stopifnot(nrow(Y) == nrow(UpB))
-    setNames(r_robust_se_X(match(cname, colnames(Y)) - 1, Y, UpU, UpB), colnames(Y))
+    setNames(r_robust_se_X(match(cname, colnames(Y)) - 1, Y), colnames(Y))
 }
 
 
@@ -127,15 +124,17 @@ robust_se_t.default <- function(U, V, B=NULL, t_cutoff=NULL,
         B = matrix(1, nrow=nrow(U))
     }
     stopifnot(nrow(U)==nrow(B))
-    UpU = ols_beta(U, U);
-    UpB = ols_beta(U, B);
+    cat("Residualizing U\n")
+    U1 = ols_resid(B, U, ols_beta(B, U));
+    cat("Transforming V\n")
+    V = ols_beta(U1, U1) %*% V
     if (is.null(t_cutoff)) {
         ## should be around 6.5 for most snRNA-seq datasets
-        t_cutoff = qt(max(nominal_p_cutoff * ncol(V)**-2, 1),
+        t_cutoff = qt(min(nominal_p_cutoff * ncol(V)**-2, 1),
                       nrow(B)-ncol(B),
                       lower.tail=FALSE)
     }
-    M = r_robust_se(V, UpU, UpB, t_cutoff, abs_t);
+    M = r_robust_se(V, t_cutoff, abs_t);
     dimnames(M) = list(colnames(V), colnames(V));
     return(M);
 }
@@ -167,14 +166,16 @@ robust_se_p.default <- function(U, V, B=NULL, nnz=NULL,
         B = matrix(1, nrow=nrow(U))
     }
     stopifnot(nrow(U)==nrow(B))
-    UpU = ols_beta(U, U);
-    UpB = ols_beta(U, B);
+    cat("Residualizing U\n")
+    U1 = ols_resid(B, U, ols_beta(B, U));
+    cat("Transforming V\n")
+    V = ols_beta(U1, U1) %*% V
     if (is.null(nnz)) {
         ## By default, just use all , but filter as norm approaches zero
         nnz = nrow(U) * (apply(V, 2, norm, "2") > 1e-10)
     }
     dof = pmax(nnz - ncol(B), 1)
-    M = r_robust_se_p(V, UpU, UpB, dof, nominal_p_cutoff, abs_t);
+    M = r_robust_se_p(V, dof, nominal_p_cutoff, abs_t);
     dimnames(M) = list(colnames(V), colnames(V));
     return(M);
 }

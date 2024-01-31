@@ -1,4 +1,4 @@
-AC_INIT([scdemon], [0.0.1])
+AC_INIT([scdemon], [0.0.2])
 
 AC_MSG_NOTICE([Creating VERSION file])
 echo m4_defn([AC_PACKAGE_VERSION]) > VERSION

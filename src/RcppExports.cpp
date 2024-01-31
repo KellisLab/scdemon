@@ -11,6 +11,31 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// r_bigclam_init
+Eigen::MatrixXd r_bigclam_init(const Eigen::Map<Eigen::SparseMatrix<double> >& X, int n_comm);
+RcppExport SEXP _scdemon_r_bigclam_init(SEXP XSEXP, SEXP n_commSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::SparseMatrix<double> >& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< int >::type n_comm(n_commSEXP);
+    rcpp_result_gen = Rcpp::wrap(r_bigclam_init(X, n_comm));
+    return rcpp_result_gen;
+END_RCPP
+}
+// r_bigclam
+Eigen::ArrayXXd r_bigclam(const Eigen::Map<Eigen::SparseMatrix<double> >& C, int n_comm, int max_iter);
+RcppExport SEXP _scdemon_r_bigclam(SEXP CSEXP, SEXP n_commSEXP, SEXP max_iterSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::SparseMatrix<double> >& >::type C(CSEXP);
+    Rcpp::traits::input_parameter< int >::type n_comm(n_commSEXP);
+    Rcpp::traits::input_parameter< int >::type max_iter(max_iterSEXP);
+    rcpp_result_gen = Rcpp::wrap(r_bigclam(C, n_comm, max_iter));
+    return rcpp_result_gen;
+END_RCPP
+}
 // r_ols_beta
 Eigen::MatrixXd r_ols_beta(const Eigen::Map<Eigen::MatrixXd>& X, const Eigen::Map<Eigen::MatrixXd>& Y);
 RcppExport SEXP _scdemon_r_ols_beta(SEXP XSEXP, SEXP YSEXP) {
@@ -77,43 +102,56 @@ BEGIN_RCPP
 END_RCPP
 }
 // r_robust_se_X
-Eigen::ArrayXd r_robust_se_X(const Eigen::Index& x_idx, const Eigen::Map<Eigen::MatrixXd>& Y, const Eigen::Map<Eigen::MatrixXd>& UpU, const Eigen::Map<Eigen::MatrixXd>& UpB);
-RcppExport SEXP _scdemon_r_robust_se_X(SEXP x_idxSEXP, SEXP YSEXP, SEXP UpUSEXP, SEXP UpBSEXP) {
+Eigen::ArrayXd r_robust_se_X(const Eigen::Index& x_idx, const Eigen::Map<Eigen::MatrixXd>& Y);
+RcppExport SEXP _scdemon_r_robust_se_X(SEXP x_idxSEXP, SEXP YSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const Eigen::Index& >::type x_idx(x_idxSEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Y(YSEXP);
-    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type UpU(UpUSEXP);
-    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type UpB(UpBSEXP);
-    rcpp_result_gen = Rcpp::wrap(r_robust_se_X(x_idx, Y, UpU, UpB));
+    rcpp_result_gen = Rcpp::wrap(r_robust_se_X(x_idx, Y));
     return rcpp_result_gen;
 END_RCPP
 }
 // r_robust_se
-Eigen::SparseMatrix<double> r_robust_se(const Eigen::Map<Eigen::MatrixXd>& Y, const Eigen::Map<Eigen::MatrixXd>& UpU, const Eigen::Map<Eigen::MatrixXd>& UpB, double t_cutoff, bool abs_cutoff);
-RcppExport SEXP _scdemon_r_robust_se(SEXP YSEXP, SEXP UpUSEXP, SEXP UpBSEXP, SEXP t_cutoffSEXP, SEXP abs_cutoffSEXP) {
+Eigen::SparseMatrix<double> r_robust_se(const Eigen::Map<Eigen::MatrixXd>& Y, double t_cutoff, bool abs_cutoff);
+RcppExport SEXP _scdemon_r_robust_se(SEXP YSEXP, SEXP t_cutoffSEXP, SEXP abs_cutoffSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Y(YSEXP);
-    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type UpU(UpUSEXP);
-    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type UpB(UpBSEXP);
     Rcpp::traits::input_parameter< double >::type t_cutoff(t_cutoffSEXP);
     Rcpp::traits::input_parameter< bool >::type abs_cutoff(abs_cutoffSEXP);
-    rcpp_result_gen = Rcpp::wrap(r_robust_se(Y, UpU, UpB, t_cutoff, abs_cutoff));
+    rcpp_result_gen = Rcpp::wrap(r_robust_se(Y, t_cutoff, abs_cutoff));
+    return rcpp_result_gen;
+END_RCPP
+}
+// r_robust_se_p
+Eigen::SparseMatrix<double> r_robust_se_p(const Eigen::Map<Eigen::MatrixXd>& Y, const Eigen::Map<Eigen::ArrayXd>& dof, double nominal_p_cutoff, bool abs_cutoff);
+RcppExport SEXP _scdemon_r_robust_se_p(SEXP YSEXP, SEXP dofSEXP, SEXP nominal_p_cutoffSEXP, SEXP abs_cutoffSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::ArrayXd>& >::type dof(dofSEXP);
+    Rcpp::traits::input_parameter< double >::type nominal_p_cutoff(nominal_p_cutoffSEXP);
+    Rcpp::traits::input_parameter< bool >::type abs_cutoff(abs_cutoffSEXP);
+    rcpp_result_gen = Rcpp::wrap(r_robust_se_p(Y, dof, nominal_p_cutoff, abs_cutoff));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_scdemon_r_bigclam_init", (DL_FUNC) &_scdemon_r_bigclam_init, 2},
+    {"_scdemon_r_bigclam", (DL_FUNC) &_scdemon_r_bigclam, 3},
     {"_scdemon_r_ols_beta", (DL_FUNC) &_scdemon_r_ols_beta, 2},
     {"_scdemon_r_ols_resid", (DL_FUNC) &_scdemon_r_ols_resid, 3},
     {"_scdemon_r_fw_meat", (DL_FUNC) &_scdemon_r_fw_meat, 4},
     {"_scdemon_r_fw_bread", (DL_FUNC) &_scdemon_r_fw_bread, 4},
     {"_scdemon_r_cbind", (DL_FUNC) &_scdemon_r_cbind, 2},
-    {"_scdemon_r_robust_se_X", (DL_FUNC) &_scdemon_r_robust_se_X, 4},
-    {"_scdemon_r_robust_se", (DL_FUNC) &_scdemon_r_robust_se, 5},
+    {"_scdemon_r_robust_se_X", (DL_FUNC) &_scdemon_r_robust_se_X, 2},
+    {"_scdemon_r_robust_se", (DL_FUNC) &_scdemon_r_robust_se, 3},
+    {"_scdemon_r_robust_se_p", (DL_FUNC) &_scdemon_r_robust_se_p, 4},
     {NULL, NULL, 0}
 };
 

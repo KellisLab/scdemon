@@ -4,8 +4,10 @@
 #include <Eigen/Dense>
 #include <Eigen/SparseCore>
 
+//#if defined(_USE_GSL)
 #include <gsl/gsl_statistics.h>
 #include <gsl/gsl_cdf.h>
+//#endif
 
 #include <algorithm>
 #include <vector>
@@ -123,30 +125,27 @@ Eigen::MatrixXd cbind(const Eigen::MatrixBase<TA> &A,
 	C.rightCols(B.cols()) = B;
 	return C;
 }
+
 /*
- * TODO run regression on B first, then FW on residuals
- * OLS y ~ B 
- * so use B (BPU Vs) to get resid
+ * Y must be U1^+ U1) 
  */
-template<typename TY, typename TU, typename TB>
+template<typename TY>
 Eigen::ArrayXd robust_se_X(const Eigen::Index &x_idx,
 			   const Eigen::MatrixBase<TY> &Y, /* V\Sigma?? */
-			   const Eigen::MatrixBase<TU> &UpU,
-			   const Eigen::MatrixBase<TB> &UpB,
 			   double epsilon=1e-300)
 {
-	Eigen::MatrixXd UpBX = cbind(UpU * Y.col(x_idx), UpB);
-	Eigen::MatrixXd BXpU = UpBX.completeOrthogonalDecomposition().pseudoInverse();
-	Eigen::MatrixXd Ur_pre = UpU - UpBX * BXpU; // Annihilator matrix in U space
-	Eigen::VectorXd var = BXpU.row(0).cwiseAbs2() * (Ur_pre * Y).cwiseAbs2();
-	Eigen::ArrayXd tval = (BXpU.row(0) * Y).array();
+  // dimensions
+	Eigen::VectorXd X = Y.col(x_idx).eval();
+	double X_rsqnorm = 1/std::max(X.squaredNorm(), epsilon);
+	// X pseudoinverse is X' / squared_norm
+	Eigen::VectorXd beta = (X.transpose() * Y).eval() * X_rsqnorm;
+	Eigen::VectorXd var = ((X.transpose() * X_rsqnorm).cwiseAbs2() * (Y - X * beta.transpose()).cwiseAbs2()).eval();
+	Eigen::ArrayXd tval = beta.array();
 	return tval * var.cwiseMax(epsilon).array().rsqrt();
 }
 
-template<typename TY, typename TU, typename TB>
+template<typename TY>
 Eigen::SparseMatrix<double> robust_se(const Eigen::MatrixBase<TY> &Y,
-				      const Eigen::MatrixBase<TU> &UpU,
-				      const Eigen::MatrixBase<TB> &UpB,
 				      double epsilon=1e-300,
 				      double t_cutoff=6.5,
 				      bool abs_cutoff=false)
@@ -159,14 +158,14 @@ Eigen::SparseMatrix<double> robust_se(const Eigen::MatrixBase<TY> &Y,
 	for (int i = 0; i < Y.cols(); i++) {
 		if (!p.check_abort()) {
 		        p.increment();
-			Eigen::ArrayXd tv = robust_se_X(i, Y, UpU, UpB, epsilon);
+			Eigen::ArrayXd tv = robust_se_X(i, Y, epsilon);
 			Eigen::SparseMatrix<double> MR(Y.cols(), Y.cols());
 			for (int j = 0; j < tv.size(); j++) {
 				if (i != j) {
 					if (abs_cutoff && (t_cutoff <= -tv[j])) {
 						MR.insert(j, i) = -tv[j];
 					} else if (tv[j] >= t_cutoff) {
-					  MR.insert(j, i) = tv[j];
+						MR.insert(j, i) = tv[j];
 					}
 				}
 			}
@@ -192,10 +191,8 @@ Eigen::ArrayXd cwiseVar(const Eigen::MatrixBase<T> &Y)
 	return (Y - means).array().square().colwise().sum() / Y.rows();
 }
 
-template<typename TY, typename TU, typename TB, typename TD>
+template<typename TY, typename TD>
 Eigen::SparseMatrix<double> robust_se_pvalue(const Eigen::MatrixBase<TY> &Y,
-					     const Eigen::MatrixBase<TU> &UpU,
-					     const Eigen::MatrixBase<TB> &UpB,
 					     const Eigen::ArrayBase<TD> &dof,
 					     double nominal_p_cutoff=0.05,
 					     bool abs_cutoff=false,
@@ -214,7 +211,7 @@ Eigen::SparseMatrix<double> robust_se_pvalue(const Eigen::MatrixBase<TY> &Y,
 	for (int i = 0; i < Y.cols(); i++) {
 		if (!p.check_abort()) {
 			p.increment();
-			Eigen::ArrayXd tv = robust_se_X(i, Y, UpU, UpB, epsilon);
+			Eigen::ArrayXd tv = robust_se_X(i, Y, epsilon);
 			Eigen::SparseMatrix<double> MR(Y.cols(), Y.cols());
 			for (int j = 0; j < tv.size(); j++) {
 				if (i != j) {

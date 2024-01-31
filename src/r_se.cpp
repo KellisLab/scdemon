@@ -50,29 +50,23 @@ Eigen::MatrixXd r_cbind(const Eigen::Map<Eigen::MatrixXd> &X,
 
 // [[Rcpp::export]]
 Eigen::ArrayXd r_robust_se_X(const Eigen::Index &x_idx,
-			     const Eigen::Map<Eigen::MatrixXd> &Y,
-			     const Eigen::Map<Eigen::MatrixXd> &UpU,
-			     const Eigen::Map<Eigen::MatrixXd> &UpB)
+			     const Eigen::Map<Eigen::MatrixXd> &Y)
 {
-	return robust_se_X(x_idx, Y, UpU, UpB, 1e-300);
+	return robust_se_X(x_idx, Y, 1e-300);
 }
 
 // [[Rcpp::export]]
 Eigen::SparseMatrix<double> r_robust_se(const Eigen::Map<Eigen::MatrixXd> &Y,
-				      const Eigen::Map<Eigen::MatrixXd> &UpU,
-				      const Eigen::Map<Eigen::MatrixXd> &UpB,
-				      double t_cutoff=2, bool abs_cutoff=false)
+					double t_cutoff=2, bool abs_cutoff=false)
 {
-	return robust_se(Y, UpU, UpB, 1e-300, t_cutoff, abs_cutoff);
+	return robust_se(Y, 1e-300, t_cutoff, abs_cutoff);
 }
 			   
 
 // [[Rcpp::export]]
 Eigen::SparseMatrix<double> r_robust_se_p(const Eigen::Map<Eigen::MatrixXd> &Y,
-					  const Eigen::Map<Eigen::MatrixXd> &UpU,
-					  const Eigen::Map<Eigen::MatrixXd> &UpB,
 					  const Eigen::Map<Eigen::ArrayXd> &dof,
 					  double nominal_p_cutoff=0.05, bool abs_cutoff=false)
 {
-	return robust_se_pvalue(Y, UpU, UpB, dof, nominal_p_cutoff, abs_cutoff, 1e-300);
+	return robust_se_pvalue(Y, dof, nominal_p_cutoff, abs_cutoff, 1e-300);
 }
