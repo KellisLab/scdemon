@@ -10,6 +10,9 @@
 //#endif
 
 #include <algorithm>
+#include <random>
+#include <chrono>
+#include <numeric>
 #include <vector>
 #include "implprogress.hpp"
 /*
@@ -126,6 +129,80 @@ Eigen::MatrixXd cbind(const Eigen::MatrixBase<TA> &A,
 	return C;
 }
 
+template<typename T>
+std::vector<T> sample(int N)
+{
+	std::vector<T> seq(N);
+        std::iota(seq.begin(), seq.end(), 1);
+        unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+        std::shuffle(seq.begin(), seq.end(), std::default_random_engine(seed));
+        return seq;
+}
+#include <iostream>
+template<typename TU, typename TV>
+Eigen::ArrayXd robust_se_Xfull(const Eigen::Index &x_idx,
+			       const Eigen::MatrixBase<TU> &U,
+			       const Eigen::MatrixBase<TV> &V,
+			       double epsilon=1e-300,
+			       Eigen::Index block_size=10000)
+{
+	Eigen::VectorXd UX = (U * V.col(x_idx)).eval();
+        double UX_rsqnorm = 1/std::max(UX.squaredNorm(), epsilon);
+	Eigen::RowVectorXd UXp = (UX.transpose() * UX_rsqnorm);
+        Eigen::RowVectorXd UXp2 = UXp.cwiseAbs2();
+        Eigen::RowVectorXd beta = (UXp * U) * V;
+        Eigen::MatrixXd meat_nou = V - V.col(x_idx) * beta;
+        Eigen::RowVectorXd var = Eigen::RowVectorXd::Zero(V.cols());
+        std::vector<Eigen::Index> U_idx = sample<Eigen::Index>(U.rows());
+        Eigen::Index n_sample = ceil(sqrt(U.rows()));
+        Eigen::Index nblocks = n_sample / block_size + (n_sample % block_size != 0);
+        for (Eigen::Index i = 0; i < nblocks; i++) {
+		Eigen::Index left = i * block_size;
+		Eigen::Index right = std::min(n_sample, (i+1)*block_size);
+                Eigen::MatrixXd Ui(right - left, U.cols());
+                Eigen::RowVectorXd UXp2i = Eigen::RowVectorXd::Zero(right - left);
+                for (Eigen::Index j = 0; j < Ui.rows(); j++) {
+                	UXp2i(j) = UXp2(U_idx[j + left]);
+                        Ui.row(j) = U.row(U_idx[j + left]);
+                }
+        	var += UXp2i * (Ui * meat_nou).cwiseAbs2();
+        }
+        var *= U.rows() / n_sample; // scaling because sampled fraction of U.rows()
+        return beta.array() * var.cwiseMax(epsilon).array().rsqrt();
+}
+template<typename TU, typename TV>
+Eigen::ArrayXd robust_se_Xfull_bad(const Eigen::Index &x_idx,
+			       const Eigen::MatrixBase<TU> &U,
+			       const Eigen::MatrixBase<TV> &V,
+			       double epsilon=1e-300,
+			       Eigen::Index block_size=100)
+{
+	Eigen::VectorXd X = (U * V.col(x_idx)).eval();
+	double X_rsqnorm = 1/std::max(X.squaredNorm(), epsilon);
+	Eigen::VectorXd Xp2T = (X * X_rsqnorm).cwiseAbs2();
+        // take nblocks as ceiling of ncol / block_size
+        Eigen::Index nblocks = V.cols() / block_size + (V.cols() % block_size != 0);
+        Eigen::ArrayXd var(V.cols());
+	for (Eigen::Index i = 0; i < nblocks; i++) {
+        	std::cout << i << std::endl;
+		Eigen::Index left = i * block_size;
+		Eigen::Index right = std::min(V.cols(), (i+1)*block_size);
+                std::vector<Eigen::Index> cols(right - left);
+                std::iota(cols.begin(), cols.end(), left);
+                Eigen::MatrixXd V1(V.rows(), cols.size());
+                for (Eigen::Index j = 0; j < cols.size(); j++) {
+                	V1.col(j) = V.col(cols[j]);
+                }
+		Eigen::MatrixXd Y = U * V1;
+		Y = (Y - X * X.transpose() * Y * X_rsqnorm).cwiseAbs2();
+                Eigen::VectorXd bvar = Xp2T.transpose() * Y;
+                for (Eigen::Index j = 0; j < cols.size(); j++) {
+                	var(cols[j]) = bvar(j);
+                }
+	}
+        Eigen::ArrayXd tval = X.array() * X_rsqnorm * var.cwiseMax(epsilon).array().rsqrt();
+        return tval;
+}
 /*
  * Y must be U1^+ U1) 
  */
@@ -146,12 +223,14 @@ Eigen::ArrayXd robust_se_X(const Eigen::Index &x_idx,
 
 template<typename TY>
 Eigen::SparseMatrix<double> robust_se(const Eigen::MatrixBase<TY> &Y,
+				      implprogress_callback callback,
+				      implprogress_callback interrupt_checker,
 				      double epsilon=1e-300,
 				      double t_cutoff=6.5,
 				      bool abs_cutoff=false)
 {
 	Eigen::SparseMatrix<double> M(Y.cols(), Y.cols());
-	ImplProgress p(Y.cols());
+	ImplProgress p(Y.cols(), callback, interrupt_checker);
 #if defined(_OPENMP)
 #pragma omp parallel 
 #endif
@@ -199,12 +278,14 @@ Eigen::ArrayXd cwiseVar(const Eigen::MatrixBase<T> &Y)
 template<typename TY, typename TD>
 Eigen::SparseMatrix<double> robust_se_pvalue(const Eigen::MatrixBase<TY> &Y,
 					     const Eigen::ArrayBase<TD> &dof,
+					     implprogress_callback callback,
+					     implprogress_callback interrupt_checker,
 					     double nominal_p_cutoff=0.05,
 					     bool abs_cutoff=false,
 					     double epsilon=1e-300)
 {
 	Eigen::SparseMatrix<double> M(Y.cols(), Y.cols());
-	ImplProgress p(Y.cols());
+	ImplProgress p(Y.cols(), callback, interrupt_checker);
 	double adj_p_cutoff = nominal_p_cutoff / (Y.cols()*Y.cols());
 	Eigen::ArrayXd t_cutoff(Y.cols());
 	for (int i = 0; i < Y.cols(); i++) {

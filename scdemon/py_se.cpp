@@ -8,20 +8,18 @@ namespace py = pybind11;
 // todo fix by using .cast<float>() in se.hpp
 //template<typename TY, typename TU, typename TB>
 Eigen::ArrayXd py_robust_se_X(int x_idx,
-			      const py::EigenDRef<Eigen::MatrixXd> &Y,
-			      const py::EigenDRef<Eigen::MatrixXd> &UpU,
-			      const py::EigenDRef<Eigen::MatrixXd> &UpB)
+			      const py::EigenDRef<Eigen::MatrixXd> &Y)
 {
-	return robust_se_X(x_idx, Y, UpU, UpB, 1e-300);
+	return robust_se_X(x_idx, Y, 1e-300);
 }
 
 Eigen::SparseMatrix<double> py_robust_se(const py::EigenDRef<Eigen::MatrixXd> &Y,
-					 const py::EigenDRef<Eigen::MatrixXd> &UpU,
-					 const py::EigenDRef<Eigen::MatrixXd> &UpB,
+					 py::function callback,
+					 py::function interrupt_checker,
 					 double t_cutoff=6.5,
 					 bool abs_t=false)
 {
-	return robust_se(Y, UpU, UpB, 1e-300, t_cutoff, abs_t);
+	return robust_se(Y, callback, interrupt_checker, 1e-300, t_cutoff, abs_t);
 }
 
 Eigen::MatrixXd py_ols_beta(const py::EigenDRef<Eigen::MatrixXd> &X,

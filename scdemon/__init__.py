@@ -1,4 +1,21 @@
 import scdemon_ext
+import sys
+
+from tqdm.auto import tqdm
+class ProgressManager:
+    def __init__(self):
+        self.pbar = None
+    def hook(self, n):
+        if self.pbar is None:
+            self.pbar = tqdm(total=n)
+        elif n < 0:
+            self.pbar.close()
+            self.pbar = None
+        else:
+            self.pbar.update(n)
+
+def _interrupt_checker():
+    pass
 
 def robust_se(U, V, B=None, t_cutoff:float=None, abs_t:bool=False, nominal_p_cutoff:float=0.05):
     """
@@ -19,7 +36,9 @@ def robust_se(U, V, B=None, t_cutoff:float=None, abs_t:bool=False, nominal_p_cut
         import scipy.stats
         t_cutoff = scipy.stats.t.isf(nominal_p_cutoff * V.shape[1]**-2,
                                      B.shape[0] - B.shape[1])
-    M = scdemon_ext.robust_se(V.astype("f8"), UpU, UpB, t_cutoff, abs_t)
+    pm = ProgressManager()
+    M = scdemon_ext.robust_se(V.astype("f8"), pm.hook, _interrupt_checker, t_cutoff, abs_t)
     return M
 
-    
+
+

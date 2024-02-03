@@ -11,7 +11,7 @@ build_flags = {"OPENMP_CXXFLAGS": "-fopenmp",
                "EIGEN_CXXFLAGS": "",
                "EIGEN_LIBS": "",
                "GSL_CXXFLAGS": "",
-               "GSL_LIBS": "-lgsl -lgslcblas -lcblas -lm"}
+               "GSL_LIBS": "-lgsl -lgslcblas -lcblas -lm".split()}
 try:
     with open("src/Makevars", "r") as makevars:
         for line in makevars:
@@ -21,24 +21,35 @@ try:
 except:
     pass
 
-if os.getenv("CONDA_PREFIX") and build_flags["EIGEN_CXXFLAGS"] == "":
+if os.getenv("CONDA_PREFIX"):
     ### conda
     build_flags["EIGEN_CXXFLAGS"] = "-I%s" % os.path.join(os.getenv("CONDA_PREFIX"), "include", "eigen3")
 
 extra_compile_args = []
 extra_link_args = []
-if build_flags["OPENMP_CXXFLAGS"]:
-    extra_compile_args.append(build_flags["OPENMP_CXXFLAGS"])
-if build_flags["OPENMP_LIBS"]:
-    extra_compile_args.append(build_flags["OPENMP_LIBS"])
-if build_flags["EIGEN_CXXFLAGS"]:
-    extra_link_args.append(build_flags["EIGEN_CXXFLAGS"])
-if build_flags["EIGEN_LIBS"]:
-    extra_link_args.append(build_flags["EIGEN_LIBS"])
-if build_flags["GSL_CXXFLAGS"]:
-    extra_link_args.append(build_flags["GSL_CXXFLAGS"])
-if build_flags["GSL_LIBS"]:
-    extra_link_args.append(build_flags["GSL_LIBS"])
+
+def flag_compile(name):
+    global extra_compile_args    
+    x = build_flags.get(name, "")
+    if isinstance(x, list):
+        extra_compile_args += [y for y in x if y]
+    elif x:
+        extra_compile_args += [x]
+
+def flag_link(name):
+    global extra_link_args    
+    x = build_flags.get(name, "")
+    if isinstance(x, list):
+        extra_link_args += [y for y in x if y]
+    elif x:
+        extra_link_args += [x]
+
+flag_compile("OPENMP_CXXFLAGS")
+flag_link("OPENMP_LIBS")
+flag_compile("EIGEN_CXXFLAGS")
+flag_link("EIGEN_LIBS")
+flag_compile("GSL_CXXFLAGS")
+flag_link("GSL_LIBS")
     
 ext_modules = [
    Pybind11Extension(
@@ -48,7 +59,7 @@ ext_modules = [
            cxx_std=17,
            define_macros=[("VERSION_INFO", __version__)],
            extra_compile_args=extra_compile_args,
-           extra_link_args=extra_link_args]
+           extra_link_args=extra_link_args
     ),
 ]
 
