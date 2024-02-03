@@ -98,7 +98,16 @@ robust_se_X <- function(cname, Y) {
 }
 
 
-#' Calculate robust standard error t-values.
+## #' Calculate HC0 SE per-row
+## #' @export
+## #' @useDynLib scdemon
+## #' @importFrom Rcpp evalCpp
+## robust_se_F <- function(cname, U, V, block_size=1000) {
+##     stopifnot(cname %in% colnames(V))
+##     setNames(r_robust_se_Xfull(match(cname, colnames(V)) - 1, U, V, block_size), colnames(V))
+## }
+
+#' calculate robust standard error t-values.
 #' Pass U, V such that X=UV
 #' @param U Observation decomposition
 #' @param V Variable decomposition
@@ -113,7 +122,8 @@ robust_se_X <- function(cname, Y) {
 robust_se_t.default <- function(U, V, B=NULL, t_cutoff=NULL,
                                 nominal_p_cutoff=0.05,
                                 abs_t=FALSE,
-                                n_components=NULL) {
+                                n_components=NULL,
+                                min_norm=1e-300) {
     stopifnot(ncol(U)==nrow(V))
     if (!is.null(n_components)) {
         stopifnot(n_components > 0)
@@ -124,10 +134,17 @@ robust_se_t.default <- function(U, V, B=NULL, t_cutoff=NULL,
         B = matrix(1, nrow=nrow(U))
     }
     stopifnot(nrow(U)==nrow(B))
-    cat("Residualizing U\n")
-    U1 = ols_resid(B, U, ols_beta(B, U));
-    cat("Transforming V\n")
-    V = ols_beta(U1, U1) %*% V
+    if (min_norm > 0) {
+        V = V[, apply(V, 2, norm, "2") >= min_norm]
+    }
+    cat("Decomposing V with SVD\n")
+    V.svd = svd(V)
+    rownames(V.svd$v) = colnames(V)
+    U = U %*% V.svd$u 
+    cat("Extracting non-orthogonal residuals\n")
+    lhs.qr = qr(ols_resid(X=B, Y=U, beta=ols_beta(X=B, Y=U)))
+    cat("Computing new embedding\n")
+    V = qr.R(lhs.qr) %*% diag(V.svd$d) %*% t(V.svd$v)
     if (is.null(t_cutoff)) {
         ## should be around 6.5 for most snRNA-seq datasets
         t_cutoff = qt(min(nominal_p_cutoff * ncol(V)**-2, 1),
@@ -155,7 +172,8 @@ robust_se_t.default <- function(U, V, B=NULL, t_cutoff=NULL,
 robust_se_p.default <- function(U, V, B=NULL, nnz=NULL,
                                 nominal_p_cutoff=0.05,
                                 abs_t=FALSE,
-                                n_components=NULL) {
+                                n_components=NULL,
+                                min_norm=1e-20) {
     stopifnot(ncol(U)==nrow(V))
     if (!is.null(n_components)) {
         stopifnot(n_components > 0)
@@ -166,10 +184,17 @@ robust_se_p.default <- function(U, V, B=NULL, nnz=NULL,
         B = matrix(1, nrow=nrow(U))
     }
     stopifnot(nrow(U)==nrow(B))
-    cat("Residualizing U\n")
-    U1 = ols_resid(B, U, ols_beta(B, U));
-    cat("Transforming V\n")
-    V = ols_beta(U1, U1) %*% V
+    if (min_norm > 0) {
+        V = V[, apply(V, 2, norm, "2") >= min_norm]
+    }
+    cat("Decomposing V with SVD\n")
+    V.svd = svd(V)
+    rownames(V.svd$v) = colnames(V)
+    U = U %*% V.svd$u 
+    cat("Extracting non-orthogonal residuals\n")
+    lhs.qr = qr(ols_resid(X=B, Y=U, beta=ols_beta(X=B, Y=U)))
+    cat("Computing new embedding\n")
+    V = qr.R(lhs.qr) %*% diag(V.svd$d) %*% t(V.svd$v)
     if (is.null(nnz)) {
         ## By default, just use all , but filter as norm approaches zero
         nnz = nrow(U) * (apply(V, 2, norm, "2") > 1e-10)
