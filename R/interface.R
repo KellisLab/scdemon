@@ -32,17 +32,12 @@ robust_se_t.AbstractAnnData <- function(obj, covariates=NULL,
     if (length(method) > 1) {
         U = obj$obsm[[method[[1]] ]]
         V = obj$varm[[method[[2]] ]]
-        u2norm = apply(U, 2, norm, "2")
-        U = U %*% diag(x=1/u2norm)
-        V = diag(x=u2norm) %*% t(V)
     } else if (method == "pca") {
-        s = sqrt(obj$uns$pca$variance * (obj$n_obs()-1))
-        U = obj$obsm$X_pca %*% diag(x=1/s)
-        V = diag(x=s) %*% t(obj$varm$PCs)
+        U = obj$obsm$X_pca
+        V = t(obj$varm$PCs)
     } else if (method == "lsi") {
-        s = obj$uns$lsi$stdev * sqrt(obj$n_obs()-1)
-        U = obj$obsm$X_lsi %*% diag(x=1/s)
-        V = diag(x=s) %*% t(obj$varm$LSI)
+        U = obj$obsm$X_lsi
+        V = t(obj$varm$LSI)
     } else if (method == "X") {
         V = obj$X
         U = Matrix::Diagonal(n=nrow(V))
@@ -58,6 +53,17 @@ robust_se_t.AbstractAnnData <- function(obj, covariates=NULL,
     S = robust_se_t.default(U=U, V=V, B=B, t_cutoff=t_cutoff,
                             abs_t=abs_t, nominal_p_cutoff=nominal_p_cutoff,
                             n_components=n_components)
+    if (nrow(S) != length(adata$var_names)) {
+        ### Expand 
+        D = Matrix::sparseMatrix(
+                        i=match(rownames(S), adata$var_names),
+                        j=1:nrow(S),
+                        dims=c(length(adata$var_names),
+                               nrow(S)),
+                        dimnames=list(adata$var_names, NULL))
+        S = D %*% S %*% Matrix::t(D)
+    }
+
     adata$varp[[key_added]] = S
     return(adata)
 }
@@ -72,17 +78,12 @@ robust_se_p.AbstractAnnData <- function(obj, covariates=NULL,
     if (length(method) > 1) {
         U = obj$obsm[[method[[1]] ]]
         V = obj$varm[[method[[2]] ]]
-        u2norm = apply(U, 2, norm, "2")
-        U = U %*% diag(x=1/u2norm)
-        V = diag(x=u2norm) %*% t(V)
     } else if (method == "pca") {
-        s = sqrt(obj$uns$pca$variance * (obj$n_obs()-1))
-        U = obj$obsm$X_pca %*% diag(x=1/s)
-        V = diag(x=s) %*% t(obj$varm$PCs)
+        U = obj$obsm$X_pca
+        V = t(obj$varm$PCs)
     } else if (method == "lsi") {
-        s = obj$uns$lsi$stdev * sqrt(obj$n_obs()-1)
-        U = obj$obsm$X_lsi %*% diag(x=1/s)
-        V = diag(x=s) %*% t(obj$varm$LSI)
+        U = obj$obsm$X_lsi
+        V = t(obj$varm$LSI)
     } else if (method == "X") {
         V = obj$X
         U = Matrix::Diagonal(n=nrow(V))
@@ -103,6 +104,16 @@ robust_se_p.AbstractAnnData <- function(obj, covariates=NULL,
     S = robust_se_p.default(U=U, V=V, B=B, nnz=nnz,
                             abs_t=abs_t, nominal_p_cutoff=nominal_p_cutoff,
                             n_components=n_components)
+    if (nrow(S) != length(adata$var_names)) {
+        ### Expand 
+        D = Matrix::sparseMatrix(
+                        i=match(rownames(S), adata$var_names),
+                        j=1:nrow(S),
+                        dims=c(length(adata$var_names),
+                               nrow(S)),
+                        dimnames=list(adata$var_names, NULL))
+        S = D %*% S %*% Matrix::t(D)
+    }
     adata$varp[[key_added]] = S
     return(adata)
 }

@@ -185,7 +185,12 @@ robust_se_p.default <- function(U, V, B=NULL, nnz=NULL,
     }
     stopifnot(nrow(U)==nrow(B))
     if (min_norm > 0) {
-        V = V[, apply(V, 2, norm, "2") >= min_norm]
+        V.keep = apply(V, 2, norm, "2") >= min_norm
+        V = V[, V.keep]
+        if (!is.null(nnz)) {
+            stopifnot(length(nnz)==length(V.keep))
+            nnz = nnz[V.keep]
+        }
     }
     cat("Decomposing V with SVD\n")
     V.svd = svd(V)
