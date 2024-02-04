@@ -1,7 +1,7 @@
 AC_INIT([scdemon], [0.0.3])
 
-AC_MSG_NOTICE([Creating VERSION file])
-echo m4_defn([AC_PACKAGE_VERSION]) > VERSION
+dnl AC_MSG_NOTICE([Creating VERSION file])
+dnl echo m4_defn([AC_PACKAGE_VERSION]) > VERSION
 
 : ${R_HOME=$(R RHOME)}
 if test -z "${R_HOME}"; then
