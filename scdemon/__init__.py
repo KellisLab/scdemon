@@ -1,6 +1,6 @@
-import scdemon_ext
+#from _core import *
 import sys
-
+from ._core import *
 from tqdm.auto import tqdm
 class ProgressManager:
     def __init__(self):

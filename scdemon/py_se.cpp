@@ -28,7 +28,7 @@ Eigen::MatrixXd py_ols_beta(const py::EigenDRef<Eigen::MatrixXd> &X,
         return ols_beta(X, Y);
 }
 
-PYBIND11_MODULE(scdemon_ext, m) {
+PYBIND11_MODULE(_core, m) {
 	m.def("ols_beta", &py_ols_beta);
 	m.def("robust_se_X", &py_robust_se_X);
 	m.def("robust_se", &py_robust_se);

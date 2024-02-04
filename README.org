@@ -34,6 +34,11 @@ BigCLAM/Leiden
 - .varp: PCA based ANN (bool)
 - .varp: filtered graph (CSR, data=tvalue)
 - .var / .varm: clustering / cluster loadings
+****  Minimal conda environment
+#+BEGIN_SRC bash
+mamba create -n scdemonpy conda-forge::gxx_linux-64 conda-forge::gcc_linux-64 conda-forge::gfortran_linux-64 conda-forge::eigen conda-forge::gsl conda-forge::anndata conda-forge::tqdm conda-forge::pybind11 conda-forge::pip conda-forge::igraph conda-forge::umap-learn
+mamba create -n scdemonr conda-forge::gxx_linux-64 conda-forge::gcc_linux-64 conda-forge::gfortran_linux-64 conda-forge::r-devtools conda-forge::r-rcppeigen conda-forge::r-rcppprogress conda-forge::gsl bioconda::bioconductor-rhdf5 conda-forge::r-igraph conda-forge::r-uwot conda-forge::r-irlba
+#+END_SRC
 **** API
 ***** build_nn_graph
 1. extract dimreduc, variables, covariates using params. Order obs/obsm based statistics if applicable.
@@ -46,11 +51,21 @@ BigCLAM/Leiden
 *** DONE C++ demo code linked to python and R
 *** DONE HC0 SE in C++
 **** DONE Eigen::MatrixBase<T> type
-*** TODO KNN interface in R/Python
-**** Sparse matrix conversion: 0/1 indexing
+*** TODO CircleCI and codecov
+*** DONE Sparse matrix conversion: 0/1 indexing
+*** TODO simplify setup
+use data.table https://github.com/Rdatatable/data.table/blob/master/configure and nloptr https://github.com/astamm/nloptr/blob/master/configure as templates
+- scikit-build + CMake for python
+- configure.ac/configure/cleanup scripts for R  
 *** TODO pkgdown website
+- github action https://github.com/r-lib/actions/blob/v2/examples/pkgdown.yaml
+*** TODO CI circleCI like bioconda?
+*** TODO testing/codecov
+*** TODO linting
+- lintr action https://github.com/r-lib/actions/blob/v2/examples/lint.yaml
+- python linting like anndata
 *** TODO sphinx/readthedocs
-*** TODO threaded implementation
+*** DONE threaded implementation
 **** OpenMP vs STL parallel
 *** TODO CMake build for R and python
 *** TODO vignettes in R and python
@@ -62,3 +77,8 @@ BigCLAM/Leiden
 **** bootstrapped cluster SE
 *** TODO Newey-West in C++ : sort by sample depth to account for depth autocorrelation
 *** TODO Submit to bioconda (R, python versions)
+*** TODO Add to bioconductor?, seurat-wrappers, scanpy.external.tl
+*** TODO Single-cell Multi-omic: Use CCA or OPA; combine graphs
+*** TODO metacell support instead of using PCA based
+*** TODO support for WGCNA
+

@@ -5,11 +5,11 @@
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
-
+from scdemon import __version__
 project = 'scdemon'
 copyright = '2024, Benjamin James'
 author = 'Benjamin James'
-release = '@VERSION@'
+release = __version__
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
