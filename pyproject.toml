@@ -10,10 +10,20 @@ authors = [{name = "Benjamin James", email = "benjames@mit.edu"},
            {name = "Carles Boix", email = "cboix@mit.edu"}]
 license = {file = "LICENSE"}
 requires-python = ">=3.7"
-dependencies = ["numpy", "pandas", "scipy", "tqdm"]
+dependencies = ["numpy", "pandas", "scipy", "tqdm", "igraph", "umap-learn", "leidenalg", "scikit-learn"]
+
+[project.urls]
+Documentation = "https://scdemon.readthedocs.io/"
+Source = "https://github.com/kellislab/scdemon"
+Home-page = "https://github.com/kellislab/scdemon"
 
 [project.optional-dependencies]
-test = ["pytest"]
+test = ["pytest", "pytest-cov", "statsmodels", "anndata"]
 
 [tool.scikit-build]
 wheel.expand-macos-universal-tags = true
+
+
+[tool.pytest.ini_options]
+python_files = "test_*.py"
+

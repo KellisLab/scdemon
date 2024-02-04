@@ -71,10 +71,15 @@ Eigen::SparseMatrix<double> r_robust_se(const Eigen::Map<Eigen::MatrixXd> &Y,
 }
 			   
 
+
 // [[Rcpp::export]]
 Eigen::SparseMatrix<double> r_robust_se_p(const Eigen::Map<Eigen::MatrixXd> &Y,
 					  const Eigen::Map<Eigen::ArrayXd> &dof,
 					  double nominal_p_cutoff=0.05, bool abs_cutoff=false)
 {
+  #if defined(_USE_GSL)
 	return robust_se_pvalue(Y, dof, NULL, NULL, nominal_p_cutoff, abs_cutoff, 1e-300);
+  #else
+	throw Rcpp::exception("Unimplemented due to lack of GSL");
+  #endif
 }

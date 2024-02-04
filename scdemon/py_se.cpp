@@ -29,9 +29,9 @@ Eigen::MatrixXd py_ols_beta(const py::EigenDRef<Eigen::MatrixXd> &X,
 }
 
 PYBIND11_MODULE(_core, m) {
-	m.def("ols_beta", &py_ols_beta);
-	m.def("robust_se_X", &py_robust_se_X);
-	m.def("robust_se", &py_robust_se);
+	m.def("py_ols_beta", &py_ols_beta);
+	m.def("py_robust_se_X", &py_robust_se_X);
+	m.def("py_robust_se", &py_robust_se);
 	// <Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd>);
 	// m.def("robust_se_X_ddf", &py_robust_se_X<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXf>);
 	// m.def("robust_se_X_dfd", &py_robust_se_X<Eigen::MatrixXd, Eigen::MatrixXf, Eigen::MatrixXd>);

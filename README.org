@@ -5,15 +5,11 @@ batteries included
 *** SVD/PCA/LSI
 need extraction
 *** PC filtering/adjustment
+- Batch effects: use QR-SVD trick
+- Multiome: Use common features and use orthogonal procrustes (SVD-based) [[https://doi.org/10.1007%2FBF02289451]]
 *** Adjacency
-KNN with many NN -> 100? 500?
-
-**** Full -> indices, indptr
-**** Annoy (R/Python) -> indices, indptr (angular; need to pre-Zscore)
-**** PyNNDescent (Python) -> indices, indptr (correlation)
 *** Filtering KNN
-Using CSR input -> indices, indptr,
-compute standard errors and p-values
+p-value filtering based on expression?
 *** Community detection
 BigCLAM/Leiden
 ** structure
@@ -26,56 +22,51 @@ BigCLAM/Leiden
 
 *** Code structure / flow
 1. Extract $U$ $\Sigma$ $V'$, ensure =std=, =n_cells_by_counts=, =covariates= are present.
-2. ANN search. Use RAnnoy (angular) /PyNNDescent (correlation), but need interface for gene-wise. For angular, need to z-score $V'$ beforehand.
-3. SE estimation. Use all dependencies, build in parallel with C++/OpenMP
-4. p-value calculation and filtering (in R/Python), build graph
-5. Community detection in C++/OpenMP (leidenalg/bigclam)
-**** Dataset storage
+2. SE estimation. Use all dependencies, build in parallel with C++/OpenMP
+3. Community detection in C++/OpenMP (leidenalg/bigclam)
+4. Visualization and secondary analysis
+**** Dataset storage (AnnData/AnnDataR)
 - .varp: PCA based ANN (bool)
 - .varp: filtered graph (CSR, data=tvalue)
 - .var / .varm: clustering / cluster loadings
-****  Minimal conda environment
+****  Dataset storage (SeuratObject)
+
+***  Minimal conda environment
 #+BEGIN_SRC bash
 mamba create -n scdemonpy conda-forge::gxx_linux-64 conda-forge::gcc_linux-64 conda-forge::gfortran_linux-64 conda-forge::eigen conda-forge::gsl conda-forge::anndata conda-forge::tqdm conda-forge::pybind11 conda-forge::pip conda-forge::igraph conda-forge::umap-learn
 mamba create -n scdemonr conda-forge::gxx_linux-64 conda-forge::gcc_linux-64 conda-forge::gfortran_linux-64 conda-forge::r-devtools conda-forge::r-rcppeigen conda-forge::r-rcppprogress conda-forge::gsl bioconda::bioconductor-rhdf5 conda-forge::r-igraph conda-forge::r-uwot conda-forge::r-irlba
 #+END_SRC
-**** API
-***** build_nn_graph
-1. extract dimreduc, variables, covariates using params. Order obs/obsm based statistics if applicable.
-2. ANN search (unless varp_from string is non-null. Save in this string if varp doesn't exist)
-3. SE estimation (C++)
-4. Prune edges, then nodes. (based on params)
-5. Save in varp_to, same name as varp_from unless set
-***** leiden(resolution) or bigclam(ncomm)
 ** large to-dos (ordered by importance)
 *** DONE C++ demo code linked to python and R
 *** DONE HC0 SE in C++
 **** DONE Eigen::MatrixBase<T> type
-*** TODO CircleCI and codecov
+*** DONE HC0 SE in R
+*** DONE HC0 SE in Python
 *** DONE Sparse matrix conversion: 0/1 indexing
-*** TODO simplify setup
+*** DONE threaded implementation
+**** OpenMP vs STL parallel
+*** DONE simplify setup
 use data.table https://github.com/Rdatatable/data.table/blob/master/configure and nloptr https://github.com/astamm/nloptr/blob/master/configure as templates
 - scikit-build + CMake for python
 - configure.ac/configure/cleanup scripts for R  
-*** TODO pkgdown website
-- github action https://github.com/r-lib/actions/blob/v2/examples/pkgdown.yaml
-*** TODO CI circleCI like bioconda?
-*** TODO testing/codecov
-*** TODO linting
+*** DONE CMake build for R and python
+*** TODO pre-commit
 - lintr action https://github.com/r-lib/actions/blob/v2/examples/lint.yaml
-- python linting like anndata
-*** TODO sphinx/readthedocs
-*** DONE threaded implementation
-**** OpenMP vs STL parallel
-*** TODO CMake build for R and python
+- python linting like anndata (ruff)
+*** TODO pkgdown website
+- Run usethis::use_github_action("pkgdown")
+*** TODO testing/codecov
+- pytest
+- testthat
 *** TODO vignettes in R and python
+*** TODO CI circleCI like bioconda?
+*** TODO sphinx/readthedocs
 *** TODO bigclam in C++
 *** TODO bigclam python/R interface
 *** TODO C++ tests
-*** TODO clustered standard errors in C++: group by sample/batch
-**** cluster robust SE
-**** bootstrapped cluster SE
-*** TODO Newey-West in C++ : sort by sample depth to account for depth autocorrelation
+*** TODO benchmarking
+*** TODO PyPI package
+like https://github.com/scverse/anndata/blob/main/.github/workflows/publish.yml
 *** TODO Submit to bioconda (R, python versions)
 *** TODO Add to bioconductor?, seurat-wrappers, scanpy.external.tl
 *** TODO Single-cell Multi-omic: Use CCA or OPA; combine graphs
