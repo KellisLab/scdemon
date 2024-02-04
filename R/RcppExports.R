@@ -33,6 +33,10 @@ r_robust_se_X <- function(x_idx, Y) {
     .Call('_scdemon_r_robust_se_X', PACKAGE = 'scdemon', x_idx, Y)
 }
 
+r_robust_se_Xfull <- function(x_idx, U, V, block_size) {
+    .Call('_scdemon_r_robust_se_Xfull', PACKAGE = 'scdemon', x_idx, U, V, block_size)
+}
+
 r_robust_se <- function(Y, t_cutoff = 2, abs_cutoff = FALSE) {
     .Call('_scdemon_r_robust_se', PACKAGE = 'scdemon', Y, t_cutoff, abs_cutoff)
 }

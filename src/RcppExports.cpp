@@ -113,6 +113,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// r_robust_se_Xfull
+Eigen::ArrayXd r_robust_se_Xfull(const Eigen::Index& x_idx, const Eigen::Map<Eigen::MatrixXd>& U, const Eigen::Map<Eigen::MatrixXd>& V, const Eigen::Index block_size);
+RcppExport SEXP _scdemon_r_robust_se_Xfull(SEXP x_idxSEXP, SEXP USEXP, SEXP VSEXP, SEXP block_sizeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::Index& >::type x_idx(x_idxSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type U(USEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type V(VSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Index >::type block_size(block_sizeSEXP);
+    rcpp_result_gen = Rcpp::wrap(r_robust_se_Xfull(x_idx, U, V, block_size));
+    return rcpp_result_gen;
+END_RCPP
+}
 // r_robust_se
 Eigen::SparseMatrix<double> r_robust_se(const Eigen::Map<Eigen::MatrixXd>& Y, double t_cutoff, bool abs_cutoff);
 RcppExport SEXP _scdemon_r_robust_se(SEXP YSEXP, SEXP t_cutoffSEXP, SEXP abs_cutoffSEXP) {
@@ -150,6 +164,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_scdemon_r_fw_bread", (DL_FUNC) &_scdemon_r_fw_bread, 4},
     {"_scdemon_r_cbind", (DL_FUNC) &_scdemon_r_cbind, 2},
     {"_scdemon_r_robust_se_X", (DL_FUNC) &_scdemon_r_robust_se_X, 2},
+    {"_scdemon_r_robust_se_Xfull", (DL_FUNC) &_scdemon_r_robust_se_Xfull, 4},
     {"_scdemon_r_robust_se", (DL_FUNC) &_scdemon_r_robust_se, 3},
     {"_scdemon_r_robust_se_p", (DL_FUNC) &_scdemon_r_robust_se_p, 4},
     {NULL, NULL, 0}
