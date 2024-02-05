@@ -14,7 +14,9 @@ RoxygenNote: 7.2.3
 Imports: Rcpp, RcppEigen, RcppProgress, Matrix
 Depends: R (>= 4.1)
 Suggests:
-    testthat (>= 3.0.0),
+    tinytest,
+    lmtest,
+    sandwich,
     SingleCellExperiment,
     SeuratObject,
     anndataR,
