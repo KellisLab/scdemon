@@ -20,7 +20,7 @@ config.log
 __pycache__/
 *.py[cod]
 *$py.class
-inst/
+#inst/
 
 # C extensions
 *.so
