@@ -27,3 +27,6 @@ wheel.expand-macos-universal-tags = true
 [tool.pytest.ini_options]
 python_files = "test_*.py"
 
+[tool.coverage.run]
+branch = true
+
