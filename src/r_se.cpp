@@ -24,24 +24,6 @@ Eigen::MatrixXd r_ols_resid(const Eigen::Map<Eigen::MatrixXd> &X,
 }
 
 // [[Rcpp::export]]
-Eigen::VectorXd r_fw_meat(const Eigen::Map<Eigen::MatrixXd> &res,
-			     const Eigen::Map<Eigen::MatrixXd> &U,
-			     const Eigen::Map<Eigen::MatrixXd> &B,
-			     const Eigen::Map<Eigen::MatrixXd> &BPU)
-{
-	return fw_meat(res, U, B, BPU);
-}
-
-// [[Rcpp::export]]
-long double r_fw_bread(const Eigen::Map<Eigen::MatrixXd> &X,
-			   const Eigen::Map<Eigen::MatrixXd> &U,
-			   const Eigen::Map<Eigen::MatrixXd> &B,
-			   const Eigen::Map<Eigen::MatrixXd> &BPU)
-{
-	return fw_bread(X, U, B, BPU);
-}
-
-// [[Rcpp::export]]
 Eigen::MatrixXd r_cbind(const Eigen::Map<Eigen::MatrixXd> &X,
 			const Eigen::Map<Eigen::MatrixXd> &Y)
 {

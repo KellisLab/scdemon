@@ -63,12 +63,13 @@ robust_se_X <- function(cname, Y) {
   V_svd <- svd(V)
   rownames(V_svd$v) <- colnames(V)
   ## group orthogonal items
+  ## TODO sample sqrt(U)? Experiment with U sampling size
   U <- U %*% V_svd$u 
   cat("Extracting non-orthogonal residuals\n")
   lhs_qr <- qr(ols_resid(X=B, Y=U, beta=ols_beta(X=B, Y=U)))
   cat("Computing new embedding\n")
   RS_svd <- svd(qr.R(lhs_qr) %*% diag(V_svd$d))
-  V <- RS_svd$s %*% t(RS_svd$v) %*% t(V_svd$v)
+  V <- diag(RS_svd$d) %*% t(RS_svd$v) %*% t(V_svd$v)
   attr(V, "dof") <- nrow(B) - ncol(B)
   if (return_U) {
     U <- qr.Q(lhs_qr) %*% RS_svd$u
