@@ -2,11 +2,12 @@ Package: scdemon
 Title: scdemon
 Version: 0.0.3
 Authors@R:
-    c(person("Benjamin", "James", , "benjames@mit.edu", role = c("aut", "cre"),
-               comment = c(ORCID = "0000-0002-6228-055X")),
-      person("Carles", "Boix", , "cboix@mit.edu", role=c("aut"),
-      	       comment = c(ORCID = "0000-0001-9212-856X")))
+    c(person(given="Benjamin", family="James", email="benjames@mit.edu", role = c("aut", "cre"), comment=c(ORCID="0000-0002-6228-055X")),
+      person(given="Carles", family="Boix", email="cboix@mit.edu", role="aut", comment=c(ORCID="0000-0001-9212-856X")),
+      person(given="Manolis", family="Kellis", email="manoli@mit.edu", role="fnd", comment=c(ORCID="0000-0001-7113-9630")))
 Description: Single cell decomposition into networks
+URL: https://github.com/kellislab/scdemon
+BugReports: https://github.com/kellislab/scdemon/issues
 License: GPL-3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -17,6 +18,7 @@ Suggests:
     tinytest,
     lmtest,
     sandwich,
+    MASS,
     SingleCellExperiment,
     SeuratObject,
     anndataR,

@@ -33,61 +33,6 @@ ols_resid <- function(X, Y, beta) {
     return(r_ols_resid(X, Y, beta))
 }
 
-#' Adjust residuals using FW partialling out
-#' 
-#' @useDynLib scdemon
-#' @importFrom Rcpp evalCpp
-fw_meat <- function(res, U=NULL, B=NULL, BPU=NULL) {
-    if (is.null(U)) {
-        return(res)
-    }
-    if (!is.matrix(res)) {
-        res = as.matrix(res)
-    }
-    stopifnot(is.matrix(U))
-    stopifnot(ncol(U)==nrow(res))
-    if (is.null(B)) {
-        B = matrix(1, nrow=nrow(U), ncol=1)
-    }
-    stopifnot(is.matrix(B))
-    stopifnot(nrow(B)==nrow(U))
-    if (is.null(BPU)) {
-        BPU = MASS::ginv(B) %*% U
-    }
-    stopifnot(is.matrix(BPU))
-    stopifnot(nrow(BPU)==ncol(B))
-    stopifnot(ncol(BPU)==ncol(U))
-    return(r_fw_meat(res, U, B, BPU))
-}
-
-
-#' Adjust X using FW partialling out
-#' 
-#' @useDynLib scdemon
-#' @importFrom Rcpp evalCpp
-fw_bread <- function(X, U=NULL, B=NULL, BPU=NULL) {
-    if (!is.matrix(X)) {
-        X = as.matrix(X)
-    }
-    if (is.null(U)) {
-        U = diag(nrow(X))
-    }
-    stopifnot(is.matrix(U))
-    stopifnot(ncol(U)==nrow(X))
-    if (is.null(B)) {
-        B = matrix(1, nrow=nrow(U), ncol=1)
-    }
-    stopifnot(is.matrix(B))
-    stopifnot(nrow(B)==nrow(U))
-    if (is.null(BPU)) {
-        BPU = MASS::ginv(B) %*% U
-    }
-    stopifnot(is.matrix(BPU))
-    stopifnot(nrow(BPU)==ncol(B))
-    stopifnot(ncol(BPU)==ncol(U))
-    return(r_fw_bread(X, U, B, BPU))
-}
-
 #' Calculate HC0 SE per-row
 #' @export
 #' @useDynLib scdemon
@@ -97,16 +42,41 @@ robust_se_X <- function(cname, Y) {
     setNames(r_robust_se_X(match(cname, colnames(Y)) - 1, Y), colnames(Y))
 }
 
-
-## #' Calculate HC0 SE per-row
-## #' @export
-## #' @useDynLib scdemon
-## #' @importFrom Rcpp evalCpp
-## robust_se_F <- function(cname, U, V, block_size=1000) {
-##     stopifnot(cname %in% colnames(V))
-##     setNames(r_robust_se_Xfull(match(cname, colnames(V)) - 1, U, V, block_size), colnames(V))
-## }
-
+### TODO test Y=U when U is diagonal for ols_resid. Only missing part for use=X
+.robust_prepare <- function(U, V, B=NULL, n_components=NULL, min_norm=1e-300, return_U=FALSE) {
+  stopifnot(ncol(U)==nrow(V))
+  if (!is.null(n_components)) {
+    stopifnot(n_components > 0)
+    U <- U[ ,seq_len(n_components), drop=FALSE]
+    V <- V[seq_len(n_components), , drop=FALSE]
+  }
+  if (is.null(B)) {
+    B <- matrix(1, nrow=nrow(U))
+  }
+  stopifnot(nrow(U)==nrow(B))
+  rownames(B) <- rownames(U)
+  if (min_norm > 0) {
+    cat("Filtering norm\n")
+    V <- V[, apply(V, 2, norm, "2") >= min_norm]
+  }
+  cat("Decomposing V with SVD\n")
+  V_svd <- svd(V)
+  rownames(V_svd$v) <- colnames(V)
+  ## group orthogonal items
+  U <- U %*% V_svd$u 
+  cat("Extracting non-orthogonal residuals\n")
+  lhs_qr <- qr(ols_resid(X=B, Y=U, beta=ols_beta(X=B, Y=U)))
+  cat("Computing new embedding\n")
+  RS_svd <- svd(qr.R(lhs_qr) %*% diag(V_svd$d))
+  V <- RS_svd$s %*% t(RS_svd$v) %*% t(V_svd$v)
+  attr(V, "dof") <- nrow(B) - ncol(B)
+  if (return_U) {
+    U <- qr.Q(lhs_qr) %*% RS_svd$u
+    rownames(U) <- rownames(B)
+    attr(V, "U") <- U
+  }
+  return(V)
+}
 #' calculate robust standard error t-values.
 #' Pass U, V such that X=UV
 #' @param U Observation decomposition
@@ -119,41 +89,24 @@ robust_se_X <- function(cname, Y) {
 #' @export
 #' @useDynLib scdemon
 #' @importFrom Rcpp evalCpp
-robust_se_t.default <- function(U, V, B=NULL, t_cutoff=NULL,
+robust_se_t.default <- function(U, V, B=NULL, 
                                 nominal_p_cutoff=0.05,
                                 abs_t=FALSE,
+                                t_cutoff=NULL,
                                 n_components=NULL,
                                 min_norm=1e-300) {
-    stopifnot(ncol(U)==nrow(V))
-    if (!is.null(n_components)) {
-        stopifnot(n_components > 0)
-        U = U[ ,1:n_components, drop=FALSE]
-        V = V[1:n_components, , drop=FALSE]
-    }
-    if (is.null(B)) {
-        B = matrix(1, nrow=nrow(U))
-    }
-    stopifnot(nrow(U)==nrow(B))
-    if (min_norm > 0) {
-        V = V[, apply(V, 2, norm, "2") >= min_norm]
-    }
-    cat("Decomposing V with SVD\n")
-    V.svd = svd(V)
-    rownames(V.svd$v) = colnames(V)
-    U = U %*% V.svd$u 
-    cat("Extracting non-orthogonal residuals\n")
-    lhs.qr = qr(ols_resid(X=B, Y=U, beta=ols_beta(X=B, Y=U)))
-    cat("Computing new embedding\n")
-    V = qr.R(lhs.qr) %*% diag(V.svd$d) %*% t(V.svd$v)
-    if (is.null(t_cutoff)) {
-        ## should be around 6.5 for most snRNA-seq datasets
-        t_cutoff = qt(min(nominal_p_cutoff * ncol(V)**-2, 1),
-                      nrow(B)-ncol(B),
-                      lower.tail=FALSE)
-    }
-    M = r_robust_se(V, t_cutoff, abs_t);
-    dimnames(M) = list(colnames(V), colnames(V));
-    return(M);
+  V <- .robust_prepare(U=U, V=V, B=B,
+                       n_components=n_components,
+                       min_norm=min_norm)
+  if (is.null(t_cutoff)) {
+    ## should be around 6.5 for most snRNA-seq datasets
+    t_cutoff <- qt(min(nominal_p_cutoff * ncol(V)**-2, 1),
+                   attr(V, "dof"),
+                   lower.tail=FALSE)
+  }
+  M <- r_robust_se(V, t_cutoff, abs_t)
+  dimnames(M) <- list(colnames(V), colnames(V))
+  return(M)
 }
 
 
@@ -197,6 +150,7 @@ robust_se_p.default <- function(U, V, B=NULL, nnz=NULL,
     rownames(V.svd$v) = colnames(V)
     U = U %*% V.svd$u 
     cat("Extracting non-orthogonal residuals\n")
+    ### TODO use qr of B: U - B(B'B)^-
     lhs.qr = qr(ols_resid(X=B, Y=U, beta=ols_beta(X=B, Y=U)))
     cat("Computing new embedding\n")
     V = qr.R(lhs.qr) %*% diag(V.svd$d) %*% t(V.svd$v)

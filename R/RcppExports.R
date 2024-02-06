@@ -17,14 +17,6 @@ r_ols_resid <- function(X, Y, beta) {
     .Call('_scdemon_r_ols_resid', PACKAGE = 'scdemon', X, Y, beta)
 }
 
-r_fw_meat <- function(res, U, B, BPU) {
-    .Call('_scdemon_r_fw_meat', PACKAGE = 'scdemon', res, U, B, BPU)
-}
-
-r_fw_bread <- function(X, U, B, BPU) {
-    .Call('_scdemon_r_fw_bread', PACKAGE = 'scdemon', X, U, B, BPU)
-}
-
 r_cbind <- function(X, Y) {
     .Call('_scdemon_r_cbind', PACKAGE = 'scdemon', X, Y)
 }

@@ -61,34 +61,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// r_fw_meat
-Eigen::VectorXd r_fw_meat(const Eigen::Map<Eigen::MatrixXd>& res, const Eigen::Map<Eigen::MatrixXd>& U, const Eigen::Map<Eigen::MatrixXd>& B, const Eigen::Map<Eigen::MatrixXd>& BPU);
-RcppExport SEXP _scdemon_r_fw_meat(SEXP resSEXP, SEXP USEXP, SEXP BSEXP, SEXP BPUSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type res(resSEXP);
-    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type U(USEXP);
-    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type B(BSEXP);
-    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type BPU(BPUSEXP);
-    rcpp_result_gen = Rcpp::wrap(r_fw_meat(res, U, B, BPU));
-    return rcpp_result_gen;
-END_RCPP
-}
-// r_fw_bread
-long double r_fw_bread(const Eigen::Map<Eigen::MatrixXd>& X, const Eigen::Map<Eigen::MatrixXd>& U, const Eigen::Map<Eigen::MatrixXd>& B, const Eigen::Map<Eigen::MatrixXd>& BPU);
-RcppExport SEXP _scdemon_r_fw_bread(SEXP XSEXP, SEXP USEXP, SEXP BSEXP, SEXP BPUSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type X(XSEXP);
-    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type U(USEXP);
-    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type B(BSEXP);
-    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type BPU(BPUSEXP);
-    rcpp_result_gen = Rcpp::wrap(r_fw_bread(X, U, B, BPU));
-    return rcpp_result_gen;
-END_RCPP
-}
 // r_cbind
 Eigen::MatrixXd r_cbind(const Eigen::Map<Eigen::MatrixXd>& X, const Eigen::Map<Eigen::MatrixXd>& Y);
 RcppExport SEXP _scdemon_r_cbind(SEXP XSEXP, SEXP YSEXP) {
@@ -160,8 +132,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_scdemon_r_bigclam", (DL_FUNC) &_scdemon_r_bigclam, 3},
     {"_scdemon_r_ols_beta", (DL_FUNC) &_scdemon_r_ols_beta, 2},
     {"_scdemon_r_ols_resid", (DL_FUNC) &_scdemon_r_ols_resid, 3},
-    {"_scdemon_r_fw_meat", (DL_FUNC) &_scdemon_r_fw_meat, 4},
-    {"_scdemon_r_fw_bread", (DL_FUNC) &_scdemon_r_fw_bread, 4},
     {"_scdemon_r_cbind", (DL_FUNC) &_scdemon_r_cbind, 2},
     {"_scdemon_r_robust_se_X", (DL_FUNC) &_scdemon_r_robust_se_X, 2},
     {"_scdemon_r_robust_se_Xfull", (DL_FUNC) &_scdemon_r_robust_se_Xfull, 4},
