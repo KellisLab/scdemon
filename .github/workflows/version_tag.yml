@@ -1,0 +1,40 @@
+name: Create Tag on Version Change
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'pyproject.toml'
+      - 'DESCRIPTION'
+      - 'configure.ac'
+
+jobs:
+  check-version-and-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Check for version changes and create tag
+        run: |
+          py_version=$(awk -F' = ' '/^version =/ {gsub(/"/, "", $2); print $2}' pyproject.toml)
+          ac_version=$(awk -F'[][ ,]+' '/AC_INIT\(/{gsub(/ /, "", $0); print $3 }' configure.ac)
+          r_version=$(awk '/^Version:/ {print $2}' DESCRIPTION)
+          if [ "$py_version" = "$ac_version" ] && [ "$py_version" = "$r_version" ]; then
+                git fetch --tags
+                TAG_EXISTS=$(git tag -l "${py_version}")
+                if [ -z "${TAG_EXISTS}" ]; then
+                    git config --global user.name 'GitHub Action'
+                    git config --global user.email 'action@github.com'
+                    git tag "${py_version}"
+                    git push origin "${py_version}" -f
+                else
+                    echo "Tag ${py_version} already exists"
+                fi
+          else
+              echo "Error: Version numbers are not synchronized!"
+              echo "pyproject.toml version: $py_version"
+              echo "configure.ac version: $ac_version"
+              echo "DESCRIPTION version: $r_version"
+              exit 1
+          fi
