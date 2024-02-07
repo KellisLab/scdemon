@@ -15,7 +15,7 @@ jobs:
         ref: 'dev'
 
     - name: Set up Autotools
-      run: sudo apt-get update && sudo apt-get install -y autoconf
+      run: command -v autoconf || (sudo apt-get update && sudo apt-get install -y autoconf)
 
     - name: Run autoreconf
       run: |

@@ -14,7 +14,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          
       - name: Check for version changes and create tag
         run: |
           py_version=$(awk -F' = ' '/^version =/ {gsub(/"/, "", $2); print $2}' pyproject.toml)
