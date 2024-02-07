@@ -7,16 +7,16 @@
 #' @useDynLib scdemon
 #' @importFrom Rcpp evalCpp
 ols_beta <- function(X, Y) {
-    if (Matrix::isDiagonal(X)) {
-        return(Matrix::Diagonal(x=1/Matrix::diag(X)) %*% Y)
-    }
-    X = as.matrix(X)
-    if (!is.null(nrow(Y))) {
-        stopifnot(nrow(X)==nrow(Y))
-    } else {
-        stopifnot(nrow(X)==length(Y))
-    }
-    return(r_ols_beta(X, Y))
+  if (Matrix::isDiagonal(X)) {
+    return(Matrix::Diagonal(x=1/Matrix::diag(X)) %*% Y)
+  }
+  X <- as.matrix(X)
+  if (!is.null(nrow(Y))) {
+    stopifnot(nrow(X)==nrow(Y))
+  } else {
+    stopifnot(nrow(X)==length(Y))
+  }
+  return(r_ols_beta(X, Y))
 }
 
 #' Calculate OLS residuals
@@ -24,13 +24,13 @@ ols_beta <- function(X, Y) {
 #' @useDynLib scdemon
 #' @importFrom Rcpp evalCpp
 ols_resid <- function(X, Y, beta) {
-    X = as.matrix(X)
-    Y = as.matrix(Y)
-    beta = as.matrix(beta)
-    stopifnot(nrow(X)==nrow(Y))
-    stopifnot(ncol(X)==nrow(beta))
-    stopifnot(ncol(beta)==ncol(Y))
-    return(r_ols_resid(X, Y, beta))
+  X <- as.matrix(X)
+  Y <- as.matrix(Y)
+  beta <- as.matrix(beta)
+  stopifnot(nrow(X)==nrow(Y))
+  stopifnot(ncol(X)==nrow(beta))
+  stopifnot(ncol(beta)==ncol(Y))
+  return(r_ols_resid(X, Y, beta))
 }
 
 #' Calculate HC0 SE per-row
@@ -38,11 +38,14 @@ ols_resid <- function(X, Y, beta) {
 #' @useDynLib scdemon
 #' @importFrom Rcpp evalCpp
 robust_se_X <- function(cname, Y) {
-    stopifnot(cname %in% colnames(Y))
-    setNames(r_robust_se_X(match(cname, colnames(Y)) - 1, Y), colnames(Y))
+  stopifnot(cname %in% colnames(Y))
+  setNames(r_robust_se_X(Y[,match(cname, colnames(Y))], Y), colnames(Y))
 }
 
 ### TODO test Y=U when U is diagonal for ols_resid. Only missing part for use=X
+#' @export
+#' @useDynLib scdemon
+#' @importFrom Rcpp evalCpp
 .robust_prepare <- function(U, V, B=NULL, n_components=NULL, min_norm=1e-300, return_U=FALSE) {
   stopifnot(ncol(U)==nrow(V))
   if (!is.null(n_components)) {
@@ -80,7 +83,7 @@ robust_se_X <- function(cname, Y) {
 }
 #' calculate robust standard error t-values.
 #' Pass U, V such that X=UV
-#' @param U Observation decomposition
+#' @param V De-biased 
 #' @param V Variable decomposition
 #' @param B Covariates/batch effects. Uses just intercept if NULL
 #' @param t_cutoff Cutoff to add to matrix. If default, uses nominal_p_cutoff
@@ -90,77 +93,23 @@ robust_se_X <- function(cname, Y) {
 #' @export
 #' @useDynLib scdemon
 #' @importFrom Rcpp evalCpp
-robust_se_t.default <- function(U, V, B=NULL, 
+robust_se_t.default <- function(V1, V2,
                                 nominal_p_cutoff=0.05,
                                 abs_t=FALSE,
-                                t_cutoff=NULL,
-                                n_components=NULL,
-                                min_norm=1e-300) {
-  V <- .robust_prepare(U=U, V=V, B=B,
-                       n_components=n_components,
-                       min_norm=min_norm)
+                                t_cutoff=NULL) {
+  require(Matrix)
+  stopifnot(is.integer(attr(V1, "dof")))
+  stopifnot(is.integer(attr(V2, "dof")))
+  dof <- mean(c(attr(V1, "dof"), attr(V2, "dof")))
   if (is.null(t_cutoff)) {
     ## should be around 6.5 for most snRNA-seq datasets
-    t_cutoff <- qt(min(nominal_p_cutoff * ncol(V)**-2, 1),
-                   attr(V, "dof"),
+    t_cutoff <- qt(min(nominal_p_cutoff / (ncol(V1) * ncol(V2)), 1),
+                   dof,
                    lower.tail=FALSE)
   }
-  M <- r_robust_se(V, t_cutoff, abs_t)
-  dimnames(M) <- list(colnames(V), colnames(V))
-  return(M)
+  M <- r_robust_se(V1, V2, t_cutoff, abs_t)
+  attr(M, "dof") <- dof
+  dimnames(M) <- list(colnames(V2), colnames(V1))
+  return(Matrix::t(M))
 }
 
-
-#' Calculate robust standard error p-values.
-#' Pass U, V such that X=UV
-#' @param U Observation decomposition
-#' @param V Variable decomposition
-#' @param B Covariates/batch effects. Uses just intercept if NULL
-#' @param nnz Number of nonzero entries per column of V, used for dof calculation.
-#' @param abs_t Whether to include items Pr>|t| or just Pr>t
-#' @param nominal_p_cutoff Cutoff to include items for automatic filtering.
-#' @return Sparse matrix of p-values
-#' @export
-#' @useDynLib scdemon
-#' @importFrom Rcpp evalCpp
-robust_se_p.default <- function(U, V, B=NULL, nnz=NULL,
-                                nominal_p_cutoff=0.05,
-                                abs_t=FALSE,
-                                n_components=NULL,
-                                min_norm=1e-20) {
-    stopifnot(ncol(U)==nrow(V))
-    if (!is.null(n_components)) {
-        stopifnot(n_components > 0)
-        U = U[ ,1:n_components, drop=FALSE]
-        V = V[1:n_components, , drop=FALSE]
-    }
-    if (is.null(B)) {
-        B = matrix(1, nrow=nrow(U))
-    }
-    stopifnot(nrow(U)==nrow(B))
-    if (min_norm > 0) {
-        V.keep = apply(V, 2, norm, "2") >= min_norm
-        V = V[, V.keep]
-        if (!is.null(nnz)) {
-            stopifnot(length(nnz)==length(V.keep))
-            nnz = nnz[V.keep]
-        }
-    }
-    cat("Decomposing V with SVD\n")
-    V.svd = svd(V)
-    rownames(V.svd$v) = colnames(V)
-    U = U %*% V.svd$u 
-    cat("Extracting non-orthogonal residuals\n")
-    ### TODO use qr of B: U - B(B'B)^-
-    lhs.qr = qr(ols_resid(X=B, Y=U, beta=ols_beta(X=B, Y=U)))
-    cat("Computing new embedding\n")
-    V = qr.R(lhs.qr) %*% diag(V.svd$d) %*% t(V.svd$v)
-    if (is.null(nnz)) {
-        ## By default, just use all , but filter as norm approaches zero
-        nnz = nrow(U) * (apply(V, 2, norm, "2") > 1e-10)
-    }
-    dof = pmax(nnz - ncol(B), 1)
-    M = r_robust_se_p(V, dof, nominal_p_cutoff, abs_t);
-    dimnames(M) = list(colnames(V), colnames(V));
-    return(M);
-}

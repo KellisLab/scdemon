@@ -5,11 +5,10 @@ from . import _core as core
 from .progress_manager import ProgressManager, _interrupt_checker
 
 def _robust_se_X(i:int, V:np.ndarray) -> np.ndarray:
-    return core.py_robust_se_X(i, V.astype("f8"))
+    return core.py_robust_se_X(V[:, i].astype("f8"), V.astype("f8"))
 
-def _robust_se(V:np.ndarray, t_cutoff:float, abs_t:bool) -> scipy.sparse.csc_matrix:
-    pm = ProgressManager()
-    return core.py_robust_se(V.astype('f8'), pm.hook, _interrupt_checker, t_cutoff, abs_t)
+def _robust_se(X:np.ndarray, V:np.ndarray, t_cutoff:float, abs_t:bool) -> scipy.sparse.csc_matrix:
+    return core.py_robust_se(X.astype("f8"), V.astype('f8'), t_cutoff, abs_t)
 
 def robust_se(U, V, B=None, t_cutoff:float=None, abs_t:bool=False, nominal_p_cutoff:float=0.05) -> scipy.sparse.csc_matrix:
     """
@@ -29,6 +28,6 @@ def robust_se(U, V, B=None, t_cutoff:float=None, abs_t:bool=False, nominal_p_cut
         import scipy.stats
         t_cutoff = scipy.stats.t.isf(nominal_p_cutoff * V.shape[1]**-2,
                                      B.shape[0] - B.shape[1])
-    return _robust_se(V, t_cutoff=t_cutoff, abs_t=abs_t)
+    return _robust_se(V, V, t_cutoff=t_cutoff, abs_t=abs_t)
 
 

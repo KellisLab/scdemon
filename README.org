@@ -1,4 +1,19 @@
 * scdemon
+** Installation
+In R:
+#+BEGIN_SRC R
+  devtools::install_github("kellislab/scdemon")
+#+END_SRC
+
+In Python:
+#+BEGIN_SRC sh
+  pip install git+https://github.com/kellislab/scdemon
+#+END_SRC
+** API
+*** robust_se_prepare
+  takes in a 
+*** robust_se_t
+  takes in a corrected V matrix
 ** algorithm checklist
 *** Normalization
 batteries included
@@ -50,6 +65,8 @@ use data.table https://github.com/Rdatatable/data.table/blob/master/configure an
 - scikit-build + CMake for python
 - configure.ac/configure/cleanup scripts for R  
 *** DONE CMake build for R and python
+*** TODO Prelim clustering with Laplacian + hclust
+*** TODO c++ non-self SE method & interface
 *** TODO pre-commit
 - lintr action https://github.com/r-lib/actions/blob/v2/examples/lint.yaml
 - python linting like anndata (ruff)

@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "scdemon"
-version = "0.0.3"
+version = "0.0.4"
 description = "Single cell decomposition into networks"
 authors = [{name = "Benjamin James", email = "benjames@mit.edu"},
            {name = "Carles Boix", email = "cboix@mit.edu"}]

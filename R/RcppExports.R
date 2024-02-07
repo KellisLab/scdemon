@@ -17,23 +17,11 @@ r_ols_resid <- function(X, Y, beta) {
     .Call('_scdemon_r_ols_resid', PACKAGE = 'scdemon', X, Y, beta)
 }
 
-r_cbind <- function(X, Y) {
-    .Call('_scdemon_r_cbind', PACKAGE = 'scdemon', X, Y)
+r_robust_se_X <- function(X, Y) {
+    .Call('_scdemon_r_robust_se_X', PACKAGE = 'scdemon', X, Y)
 }
 
-r_robust_se_X <- function(x_idx, Y) {
-    .Call('_scdemon_r_robust_se_X', PACKAGE = 'scdemon', x_idx, Y)
-}
-
-r_robust_se_Xfull <- function(x_idx, U, V, block_size) {
-    .Call('_scdemon_r_robust_se_Xfull', PACKAGE = 'scdemon', x_idx, U, V, block_size)
-}
-
-r_robust_se <- function(Y, t_cutoff = 2, abs_cutoff = FALSE) {
-    .Call('_scdemon_r_robust_se', PACKAGE = 'scdemon', Y, t_cutoff, abs_cutoff)
-}
-
-r_robust_se_p <- function(Y, dof, nominal_p_cutoff = 0.05, abs_cutoff = FALSE) {
-    .Call('_scdemon_r_robust_se_p', PACKAGE = 'scdemon', Y, dof, nominal_p_cutoff, abs_cutoff)
+r_robust_se <- function(X, Y, t_cutoff = 2, abs_cutoff = FALSE) {
+    .Call('_scdemon_r_robust_se', PACKAGE = 'scdemon', X, Y, t_cutoff, abs_cutoff)
 }
 
