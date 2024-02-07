@@ -15,9 +15,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Check for version changes and create tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           py_version=$(awk -F' = ' '/^version =/ {gsub(/"/, "", $2); print $2}' pyproject.toml)
           ac_version=$(awk -F'[][ ,]+' '/AC_INIT\(/{gsub(/ /, "", $0); print $3 }' configure.ac)
