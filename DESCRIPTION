@@ -18,7 +18,6 @@ Suggests:
     tinytest,
     lmtest,
     sandwich,
-    MASS,
     SingleCellExperiment,
     SeuratObject,
     anndataR,

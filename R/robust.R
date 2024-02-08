@@ -11,12 +11,15 @@ ols_beta <- function(X, Y) {
     return(Matrix::Diagonal(x=1/Matrix::diag(X)) %*% Y)
   }
   X <- as.matrix(X)
+  Y <- as.matrix(Y)
   if (!is.null(nrow(Y))) {
     stopifnot(nrow(X)==nrow(Y))
   } else {
     stopifnot(nrow(X)==length(Y))
   }
-  return(r_ols_beta(X, Y))
+  beta <- r_ols_beta(X, Y)
+  dimnames(beta) <- list(colnames(X), colnames(Y))
+  return(beta)
 }
 
 #' Calculate OLS residuals
@@ -30,7 +33,9 @@ ols_resid <- function(X, Y, beta) {
   stopifnot(nrow(X)==nrow(Y))
   stopifnot(ncol(X)==nrow(beta))
   stopifnot(ncol(beta)==ncol(Y))
-  return(r_ols_resid(X, Y, beta))
+  res <- r_ols_resid(X, Y, beta)
+  dimnames(res) <- dimnames(Y)
+  return(res)
 }
 
 #' Calculate HC0 SE per-row
