@@ -104,6 +104,7 @@ robust_se_t.default <- function(V1, V2,
                                 t_cutoff=NULL) {
   require(Matrix)
   stopifnot(is.integer(attr(V1, "dof")))
+  if (is.null(V2)) { V2 = V1 }
   stopifnot(is.integer(attr(V2, "dof")))
   dof <- mean(c(attr(V1, "dof"), attr(V2, "dof")))
   if (is.null(t_cutoff)) {

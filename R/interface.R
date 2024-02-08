@@ -19,6 +19,22 @@ robust_se_t <- function(obj, ...) {
 }
 
 #' @export
+robust_se_t.SeuratObject <- function(obj, covariates=NULL,
+                                     reduction="pca", ### todo multiomic for multiple reductions?
+                                     key_added="scdemon",
+                                     nominal_p_cutoff=0.05,
+                                     t_cutoff=NULL, abs_t=FALSE, n_components=NULL) {
+  require(SeuratObject)
+  U <- Embeddings(obj, reduction=reduction)
+  V <- t(Loadings(obj, reduction=reduction))
+  B <- .extract_covariates(covariates, df=obj[[]])
+  V <- .robust_prepare(U=U, V=V, B=B, n_components=n_components, return_U=FALSE)
+  S <- robust_se_t.default(V, V, t_cutoff=t_cutoff,
+                           abs_t=abs_t, nominal_p_cutoff=nominal_p_cutoff)
+  Graphs(obj)[[paste0(key_added, "_", reduction)]] = as.Graph(S)
+  return(obj)
+}
+#' @export
 robust_se_t.AbstractAnnData <- function(obj, covariates=NULL,
                                         method="pca",
                                         key_added="scdemon",
@@ -46,7 +62,7 @@ robust_se_t.AbstractAnnData <- function(obj, covariates=NULL,
   rownames(U) <- obj$obs_names
   B <- .extract_covariates(covariates, obj$obs)
   V <- .robust_prepare(U=U, V=V, B=B, n_components=n_components, return_U=FALSE)
-  S <- robust_se_t.default(V, t_cutoff=t_cutoff,
+  S <- robust_se_t.default(V, V, t_cutoff=t_cutoff,
                            abs_t=abs_t, nominal_p_cutoff=nominal_p_cutoff)
   if (nrow(S) != length(adata$var_names)) {
     D <- Matrix::sparseMatrix(i=match(rownames(S), adata$var_names),
