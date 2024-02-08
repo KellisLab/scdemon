@@ -10,6 +10,84 @@
 #include <algorithm>
 
 #include "implprogress.hpp"
+
+/*
+ * Requirements for graph class
+ * 1. Extract neighbors (out degree)
+ * 2. Compute function of neighbor weights and multiply times dense
+ * 3. Compute conductivity per-node
+ */
+template<typename T>
+class Graph {
+private:
+  /* In is major->minor,
+   * Out is minor->major 
+   * so in col major, row->col is outedge, col->row is inedge
+   */
+  const Eigen::SparseCompressedBase<T> &m_adj;
+  /* In and out weighted degrees (row/col sums) */
+  Eigen::ArrayXd m_iwdegree, m_owdegree;
+  /* In and out integral degrees (nonzero row/col sums) */
+  Eigen::ArrayXi m_iidegree, m_oidegree;
+public:
+  Graph(const Eigen::SparseCompressedBase<T> &adj,
+        Eigen::ArrayXd owdegree, Eigen::ArrayXd iwdegree,
+        Eigen::ArrayXi oidegree, Eigen::ArrayXi iidegree) : m_adj(adj),
+                                                            m_iwdegree(iwdegree), m_owdegree(owdegree),
+                                                            m_iidegree(iidegree), m_oidegree(oidegree) {}
+  Graph(const Eigen::SparseCompressedBase<T> &adj) : m_adj(adj),
+                                                     m_iwdegree(Eigen::ArrayXd::Zero(T::IsRowMajor ? adj.rows() : adj.cols())),
+                                                     m_owdegree(Eigen::ArrayXd::Zero(T::IsRowMajor ? adj.cols() : adj.rows())),
+                                                     m_iidegree(Eigen::ArrayXi::Zero(T::IsRowMajor ? adj.rows() : adj.cols())),
+                                                     m_oidegree(Eigen::ArrayXi::Zero(T::IsRowMajor ? adj.cols() : adj.rows()))
+  { /* Count the in and out degrees (weighted and unweighted) */
+#if defined(_OPENMP)
+#pragma omp parallel
+#endif
+  	{
+        	Eigen::ArrayXd in_w_degree = Eigen::ArrayXd::Zero(m_iwdegree.size());
+                Eigen::ArrayXi in_i_degree = Eigen::ArrayXd::Zero(m_iidegree.size());
+#if defined(_OPENMP)
+#pragma omp for nowait
+#endif
+                for (Eigen::Index outerIndex = 0; outerIndex < m_owdegree.size(); outerIndex++) {
+                	int local_outer_deg_i = 0;
+                        double local_outer_deg_w = 0;
+                        for (typename T::InnerIterator it(m_adj, outerIndex); it; ++it) {
+                        	Eigen::Index innerIndex = T::IsRowMajor ? it.col() : it.row();
+                                if (innerIndex != outerIndex) {
+                                	local_outer_deg_i++;
+                                        local_outer_deg_w += it.value();
+                                        in_i_degree(innerIndex)++;
+                                        in_w_degree(innerIndex) += it.value();
+                                }
+                        }
+                        m_oidegree(outerIndex) = local_outer_deg_i;
+                        m_owdegree(outerIndex) = local_outer_deg_w;
+                }
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
+                {
+                	m_iidegree += in_i_degree;
+                        m_iwdegree += in_w_degree;
+                }
+        }
+  }
+  const Eigen::ArrayXd& degree_weighted(bool out=true) const { return out ? m_owdegree : m_iwdegree; }
+  const Eigen::ArrayXi& degree_unweighted(bool out=true) const { return out ? m_oidegree : m_iidegree; }
+  // std::vector<std::pair<Eigen::Index, T> > neighbors(Eigen::Index outerIndex, bool weighted=true) const {
+    
+  // }
+};
+
+template<typename T>
+const Eigen::ArrayXd& degree(const Eigen::SparseCompressedBase<T> &mat)
+{
+	Graph G(mat);
+        return G.degree_weighted();
+}
+
 template<typename T>
 std::vector<std::pair<Eigen::Index, double> > graph_neighbors(const Eigen::SparseCompressedBase<T> &mat,
 							      Eigen::Index outerIndex,
