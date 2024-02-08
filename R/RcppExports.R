@@ -9,6 +9,18 @@ r_bigclam <- function(C, n_comm, max_iter = 1000L) {
     .Call('_scdemon_r_bigclam', PACKAGE = 'scdemon', C, n_comm, max_iter)
 }
 
+r_graph_conductance <- function(X, min_deg) {
+    .Call('_scdemon_r_graph_conductance', PACKAGE = 'scdemon', X, min_deg)
+}
+
+r_graph_conductance_row <- function(X, i, degree, deg_sum, min_deg) {
+    .Call('_scdemon_r_graph_conductance_row', PACKAGE = 'scdemon', X, i, degree, deg_sum, min_deg)
+}
+
+r_graph_degree <- function(X, diag = FALSE) {
+    .Call('_scdemon_r_graph_degree', PACKAGE = 'scdemon', X, diag)
+}
+
 r_ols_beta <- function(X, Y) {
     .Call('_scdemon_r_ols_beta', PACKAGE = 'scdemon', X, Y)
 }

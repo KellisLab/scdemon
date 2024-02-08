@@ -36,6 +36,45 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// r_graph_conductance
+Eigen::ArrayXd r_graph_conductance(const Eigen::Map<Eigen::SparseMatrix<double> >& X, int min_deg);
+RcppExport SEXP _scdemon_r_graph_conductance(SEXP XSEXP, SEXP min_degSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::SparseMatrix<double> >& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< int >::type min_deg(min_degSEXP);
+    rcpp_result_gen = Rcpp::wrap(r_graph_conductance(X, min_deg));
+    return rcpp_result_gen;
+END_RCPP
+}
+// r_graph_conductance_row
+double r_graph_conductance_row(const Eigen::Map<Eigen::SparseMatrix<double> >& X, Eigen::Index i, const Eigen::ArrayXd& degree, double deg_sum, int min_deg);
+RcppExport SEXP _scdemon_r_graph_conductance_row(SEXP XSEXP, SEXP iSEXP, SEXP degreeSEXP, SEXP deg_sumSEXP, SEXP min_degSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::SparseMatrix<double> >& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< Eigen::Index >::type i(iSEXP);
+    Rcpp::traits::input_parameter< const Eigen::ArrayXd& >::type degree(degreeSEXP);
+    Rcpp::traits::input_parameter< double >::type deg_sum(deg_sumSEXP);
+    Rcpp::traits::input_parameter< int >::type min_deg(min_degSEXP);
+    rcpp_result_gen = Rcpp::wrap(r_graph_conductance_row(X, i, degree, deg_sum, min_deg));
+    return rcpp_result_gen;
+END_RCPP
+}
+// r_graph_degree
+Eigen::ArrayXd r_graph_degree(const Eigen::Map<Eigen::SparseMatrix<double> >& X, bool diag);
+RcppExport SEXP _scdemon_r_graph_degree(SEXP XSEXP, SEXP diagSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::SparseMatrix<double> >& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< bool >::type diag(diagSEXP);
+    rcpp_result_gen = Rcpp::wrap(r_graph_degree(X, diag));
+    return rcpp_result_gen;
+END_RCPP
+}
 // r_ols_beta
 Eigen::MatrixXd r_ols_beta(const Eigen::Map<Eigen::MatrixXd>& X, const Eigen::Map<Eigen::MatrixXd>& Y);
 RcppExport SEXP _scdemon_r_ols_beta(SEXP XSEXP, SEXP YSEXP) {
@@ -91,6 +130,9 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_scdemon_r_bigclam_init", (DL_FUNC) &_scdemon_r_bigclam_init, 2},
     {"_scdemon_r_bigclam", (DL_FUNC) &_scdemon_r_bigclam, 3},
+    {"_scdemon_r_graph_conductance", (DL_FUNC) &_scdemon_r_graph_conductance, 2},
+    {"_scdemon_r_graph_conductance_row", (DL_FUNC) &_scdemon_r_graph_conductance_row, 5},
+    {"_scdemon_r_graph_degree", (DL_FUNC) &_scdemon_r_graph_degree, 2},
     {"_scdemon_r_ols_beta", (DL_FUNC) &_scdemon_r_ols_beta, 2},
     {"_scdemon_r_ols_resid", (DL_FUNC) &_scdemon_r_ols_resid, 3},
     {"_scdemon_r_robust_se_X", (DL_FUNC) &_scdemon_r_robust_se_X, 2},
