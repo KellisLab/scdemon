@@ -18,7 +18,9 @@ robust_se_t <- function(obj, ...) {
   }
 }
 
+#' 
 #' @export
+#' @method robust_se_t Seurat
 robust_se_t.Seurat <- function(obj, covariates=NULL,
                                reduction="pca", ### todo multiomic for multiple reductions?
                                key_added="scdemon",
@@ -29,11 +31,13 @@ robust_se_t.Seurat <- function(obj, covariates=NULL,
   V <- t(Loadings(obj, reduction=reduction))
   B <- .extract_covariates(covariates, df=obj[[]])
   V <- .robust_prepare(U=U, V=V, B=B, n_components=n_components, return_U=FALSE)
-  S <- robust_se_t.default(V, V, t_cutoff=t_cutoff,
-                           abs_t=abs_t, nominal_p_cutoff=nominal_p_cutoff)
-  Graphs(obj)[[paste0(key_added, "_", reduction)]] = as.Graph(S)
-  return(obj)
+  S <- as.Graph(robust_se_t.default(V, V, t_cutoff=t_cutoff,
+                                    abs_t=abs_t, nominal_p_cutoff=nominal_p_cutoff))
+  slot(object = S, name = "assay.used") <- DefaultAssay(object=obj[[reduction]])
+  ## TODO add to object
+  return(S)
 }
+
 #' @export
 robust_se_t.AbstractAnnData <- function(obj, covariates=NULL,
                                         method="pca",
