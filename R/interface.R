@@ -19,11 +19,11 @@ robust_se_t <- function(obj, ...) {
 }
 
 #' @export
-robust_se_t.SeuratObject <- function(obj, covariates=NULL,
-                                     reduction="pca", ### todo multiomic for multiple reductions?
-                                     key_added="scdemon",
-                                     nominal_p_cutoff=0.05,
-                                     t_cutoff=NULL, abs_t=FALSE, n_components=NULL) {
+robust_se_t.Seurat <- function(obj, covariates=NULL,
+                               reduction="pca", ### todo multiomic for multiple reductions?
+                               key_added="scdemon",
+                               nominal_p_cutoff=0.05,
+                               t_cutoff=NULL, abs_t=FALSE, n_components=NULL) {
   require(SeuratObject)
   U <- Embeddings(obj, reduction=reduction)
   V <- t(Loadings(obj, reduction=reduction))
