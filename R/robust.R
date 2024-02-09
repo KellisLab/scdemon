@@ -104,7 +104,7 @@ robust_se_t.default <- function(V1, V2,
                                 t_cutoff=NULL) {
   require(Matrix)
   stopifnot(is.integer(attr(V1, "dof")))
-  if (is.null(V2)) { V2 = V1 }
+  if (is.null(V2)) { V2 <- V1 }
   stopifnot(is.integer(attr(V2, "dof")))
   dof <- mean(c(attr(V1, "dof"), attr(V2, "dof")))
   if (is.null(t_cutoff)) {
@@ -113,9 +113,11 @@ robust_se_t.default <- function(V1, V2,
                    dof,
                    lower.tail=FALSE)
   }
+  comm <- intersect(colnames(V2), colnames(V1))
   M <- r_robust_se(V1, V2, t_cutoff, abs_t)
   attr(M, "dof") <- dof
-  dimnames(M) <- list(colnames(V2), colnames(V1))
-  return(Matrix::t(M))
+  M[cbind(match(colnames(V2), comm),
+          match(colnames(V1), comm))] = 0
+  return(Matrix::t(Matrix::drop0(M)))
 }
 
