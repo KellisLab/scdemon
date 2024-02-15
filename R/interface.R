@@ -68,6 +68,7 @@ robust_se_t.AbstractAnnData <- function(obj, covariates=NULL,
   V <- .robust_prepare(U=U, V=V, B=B, n_components=n_components, return_U=FALSE)
   S <- robust_se_t.default(V, V, t_cutoff=t_cutoff,
                            abs_t=abs_t, nominal_p_cutoff=nominal_p_cutoff)
+  dimnames(S) = list(colnames(V), colnames(V))
   if (nrow(S) != length(adata$var_names)) {
     D <- Matrix::sparseMatrix(i=match(rownames(S), adata$var_names),
                               j=seq_len(nrow(S)),
