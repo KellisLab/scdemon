@@ -51,7 +51,7 @@ robust_se_X <- function(cname, Y) {
 #' @export
 #' @useDynLib scdemon
 #' @importFrom Rcpp evalCpp
-.robust_prepare <- function(U, V, B=NULL, n_components=NULL, min_norm=1e-300, return_U=FALSE) {
+.robust_prepare <- function(U, V, B=NULL, n_components=NULL, min_norm=1e-5, return_U=FALSE) {
   stopifnot(ncol(U)==nrow(V))
   if (!is.null(n_components)) {
     stopifnot(n_components > 0)
