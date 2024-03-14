@@ -18,12 +18,34 @@ robust_se_t <- function(obj, ...) {
   }
 }
 
+#' 
+#' @export
+#' @method robust_se_t Seurat
+robust_se_t.Seurat <- function(obj, covariates=NULL,
+                               reduction="pca", ### todo multiomic for multiple reductions?
+                               key_added="scdemon",
+                               nominal_p_cutoff=0.05,
+                               t_cutoff=NULL, abs_t=FALSE, n_components=NULL,
+                               min_norm=1e-5) {
+  require(SeuratObject)
+  U <- Embeddings(obj, reduction=reduction)
+  V <- t(Loadings(obj, reduction=reduction))
+  B <- .extract_covariates(covariates, df=obj[[]])
+  V <- .robust_prepare(U=U, V=V, B=B, n_components=n_components, min_norm=min_norm, return_U=FALSE)
+  S <- as.Graph(robust_se_t.default(V, V, t_cutoff=t_cutoff,
+                                    abs_t=abs_t, nominal_p_cutoff=nominal_p_cutoff))
+  slot(object = S, name = "assay.used") <- DefaultAssay(object=obj[[reduction]])
+  ## TODO add to object
+  return(S)
+}
+
 #' @export
 robust_se_t.AbstractAnnData <- function(obj, covariates=NULL,
                                         method="pca",
                                         key_added="scdemon",
                                         nominal_p_cutoff=0.05,
-                                        t_cutoff=NULL, abs_t=FALSE, n_components=NULL) {
+                                        t_cutoff=NULL, abs_t=FALSE, n_components=NULL,
+                                        min_norm=1e-5) {
   if (length(method) > 1) {
     U <- obj$obsm[[method[[1]] ]]
     V <- obj$varm[[method[[2]] ]]
@@ -45,9 +67,10 @@ robust_se_t.AbstractAnnData <- function(obj, covariates=NULL,
   colnames(V) <- obj$var_names
   rownames(U) <- obj$obs_names
   B <- .extract_covariates(covariates, obj$obs)
-  V <- .robust_prepare(U=U, V=V, B=B, n_components=n_components, return_U=FALSE)
-  S <- robust_se_t.default(V, t_cutoff=t_cutoff,
+  V <- .robust_prepare(U=U, V=V, B=B, n_components=n_components, min_norm=min_norm, return_U=FALSE)
+  S <- robust_se_t.default(V, V, lambda=1e-10, t_cutoff=t_cutoff,
                            abs_t=abs_t, nominal_p_cutoff=nominal_p_cutoff)
+  dimnames(S) = list(colnames(V), colnames(V))
   if (nrow(S) != length(adata$var_names)) {
     D <- Matrix::sparseMatrix(i=match(rownames(S), adata$var_names),
                               j=seq_len(nrow(S)),
@@ -60,3 +83,6 @@ robust_se_t.AbstractAnnData <- function(obj, covariates=NULL,
   return(adata)
 }
 
+robust_se_t.MultiAssayExperiment <- function(obj, covariates=NULL) {
+
+}

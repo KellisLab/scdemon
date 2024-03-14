@@ -11,12 +11,15 @@ ols_beta <- function(X, Y) {
     return(Matrix::Diagonal(x=1/Matrix::diag(X)) %*% Y)
   }
   X <- as.matrix(X)
+  Y <- as.matrix(Y)
   if (!is.null(nrow(Y))) {
     stopifnot(nrow(X)==nrow(Y))
   } else {
     stopifnot(nrow(X)==length(Y))
   }
-  return(r_ols_beta(X, Y))
+  beta <- r_ols_beta(X, Y)
+  dimnames(beta) <- list(colnames(X), colnames(Y))
+  return(beta)
 }
 
 #' Calculate OLS residuals
@@ -30,23 +33,35 @@ ols_resid <- function(X, Y, beta) {
   stopifnot(nrow(X)==nrow(Y))
   stopifnot(ncol(X)==nrow(beta))
   stopifnot(ncol(beta)==ncol(Y))
-  return(r_ols_resid(X, Y, beta))
+  res <- r_ols_resid(X, Y, beta)
+  dimnames(res) <- dimnames(Y)
+  return(res)
 }
 
 #' Calculate HC0 SE per-row
 #' @export
 #' @useDynLib scdemon
 #' @importFrom Rcpp evalCpp
-robust_se_X <- function(cname, Y) {
+robust_se_X <- function(cname, Y, lambda=1e-10) {
   stopifnot(cname %in% colnames(Y))
-  setNames(r_robust_se_X(Y[,match(cname, colnames(Y))], Y), colnames(Y))
+  setNames(r_robust_se_X(Y[,match(cname, colnames(Y))], Y, lambda), colnames(Y))
+}
+
+#' Calculate regularized SE with per-Y lambda
+#' @export
+#' @useDynLib scdemon
+#' @importFrom Rcpp evalCpp
+robust_se_L <- function(cname, Y, lambda) {
+    stopifnot(cname %in% colnames(Y))
+    stopifnot(length(lambda)==ncol(Y))
+    setNames(r_robust_se_L(Y[,match(cname, colnames(Y))], Y, lambda), colnames(Y))
 }
 
 ### TODO test Y=U when U is diagonal for ols_resid. Only missing part for use=X
 #' @export
 #' @useDynLib scdemon
 #' @importFrom Rcpp evalCpp
-.robust_prepare <- function(U, V, B=NULL, n_components=NULL, min_norm=1e-300, return_U=FALSE) {
+.robust_prepare <- function(U, V, B=NULL, n_components=NULL, min_norm=1e-5, return_U=FALSE) {
   stopifnot(ncol(U)==nrow(V))
   if (!is.null(n_components)) {
     stopifnot(n_components > 0)
@@ -95,21 +110,30 @@ robust_se_X <- function(cname, Y) {
 #' @importFrom Rcpp evalCpp
 robust_se_t.default <- function(V1, V2,
                                 nominal_p_cutoff=0.05,
-                                abs_t=FALSE,
+                                lambda=1e-10,
+                                abs_t=FALSE, dof=NULL,
                                 t_cutoff=NULL) {
   require(Matrix)
-  stopifnot(is.integer(attr(V1, "dof")))
-  stopifnot(is.integer(attr(V2, "dof")))
-  dof <- mean(c(attr(V1, "dof"), attr(V2, "dof")))
+  if (is.null(V2)) V2 <- V1 
   if (is.null(t_cutoff)) {
+    if (is.null(dof)) {
+      stopifnot(is.integer(attr(V1, "dof")))
+      stopifnot(is.integer(attr(V2, "dof")))
+      dof <- mean(c(attr(V1, "dof"), attr(V2, "dof")))
+    }
     ## should be around 6.5 for most snRNA-seq datasets
     t_cutoff <- qt(min(nominal_p_cutoff / (ncol(V1) * ncol(V2)), 1),
                    dof,
                    lower.tail=FALSE)
   }
-  M <- r_robust_se(V1, V2, t_cutoff, abs_t)
-  attr(M, "dof") <- dof
+  comm <- intersect(colnames(V2), colnames(V1))
+  M <- r_robust_se(V1, V2, lambda, t_cutoff, abs_t)
   dimnames(M) <- list(colnames(V2), colnames(V1))
-  return(Matrix::t(M))
+  if (!is.null(dof)) attr(M, "dof") <- dof
+  if (length(comm) > 0) { 
+    M[cbind(match(colnames(V2), comm),
+            match(colnames(V1), comm))] <- 0
+  }
+  return(Matrix::t(Matrix::drop0(M)))
 }
 
