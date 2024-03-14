@@ -9,11 +9,15 @@ r_ols_resid <- function(X, Y, beta) {
     .Call('_scdemon_r_ols_resid', PACKAGE = 'scdemon', X, Y, beta)
 }
 
-r_robust_se_X <- function(X, Y) {
-    .Call('_scdemon_r_robust_se_X', PACKAGE = 'scdemon', X, Y)
+r_robust_se_X <- function(X, Y, lambda = 1e-10) {
+    .Call('_scdemon_r_robust_se_X', PACKAGE = 'scdemon', X, Y, lambda)
 }
 
-r_robust_se <- function(X, Y, t_cutoff = 2, abs_cutoff = FALSE) {
-    .Call('_scdemon_r_robust_se', PACKAGE = 'scdemon', X, Y, t_cutoff, abs_cutoff)
+r_robust_se_L <- function(X, Y, lambda) {
+    .Call('_scdemon_r_robust_se_L', PACKAGE = 'scdemon', X, Y, lambda)
+}
+
+r_robust_se <- function(X, Y, lambda = 1e-10, t_cutoff = 2, abs_cutoff = FALSE) {
+    .Call('_scdemon_r_robust_se', PACKAGE = 'scdemon', X, Y, lambda, t_cutoff, abs_cutoff)
 }
 

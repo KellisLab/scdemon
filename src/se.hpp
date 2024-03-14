@@ -49,6 +49,20 @@ Eigen::ArrayXd robust_se_X(const Eigen::MatrixBase<TX> &Xmat,
 	return tval * var.cwiseMax(epsilon).array().rsqrt();
 }
 
+template<typename TX, typename TY, typename TL>
+Eigen::ArrayXd robust_se_L(const Eigen::MatrixBase<TX> &Xmat,
+			   const Eigen::MatrixBase<TY> &Y, /* V\Sigma?? */
+                           const Eigen::ArrayBase<TL> &lambda,
+			   double epsilon=1e-300)
+{
+	Eigen::VectorXd X = Xmat.col(0).eval();
+	double X_sqnorm = std::max(X.squaredNorm().eval(), epsilon);
+	// X pseudoinverse is X' / squared_norm
+	Eigen::VectorXd beta = (X.transpose() * Y).eval() / (X_sqnorm + lambda);
+	Eigen::VectorXd var = ((X.transpose() / X_sqnorm).cwiseAbs2() * (Y - X * beta.transpose()).cwiseAbs2()).eval();
+	Eigen::ArrayXd tval = beta.array();
+	return tval * var.cwiseMax(epsilon).array().rsqrt();
+}
 template<typename TX, typename TY>
 Eigen::SparseMatrix<double> robust_se(const Eigen::MatrixBase<TX> &X,
 				      const Eigen::MatrixBase<TY> &Y,
