@@ -53,8 +53,8 @@ def robust_se_default(U, V, B=None, t_cutoff:float=None, abs_t:bool=False, nomin
         B = np.ones((U.shape[0], 1), dtype="f8")
     elif U.shape[0] != B.shape[0]:
         raise ValueError("U and B must have compatible dimensions : %d != %d" % (U.shape[0], B.shape[0]))
-    UpB = ext.py_ols_beta(U.astype("f8"), B.astype("f8"))
-    UpU = ext.py_ols_beta(U.astype("f8"), U.astype("f8"))
+    UpB = core.py_ols_beta(U.astype("f8"), B.astype("f8"))
+    UpU = core.py_ols_beta(U.astype("f8"), U.astype("f8"))
     if t_cutoff is None:
         import scipy.stats
         t_cutoff = scipy.stats.t.isf(nominal_p_cutoff * V.shape[1]**-2,
