@@ -100,14 +100,16 @@ robust_se_X <- function(cname, Y) {
 #' @importFrom Rcpp evalCpp
 robust_se_t.default <- function(V1, V2,
                                 nominal_p_cutoff=0.05,
-                                abs_t=FALSE,
+                                abs_t=FALSE, dof=NULL,
                                 t_cutoff=NULL) {
   require(Matrix)
-  stopifnot(is.integer(attr(V1, "dof")))
-  if (is.null(V2)) { V2 <- V1 }
-  stopifnot(is.integer(attr(V2, "dof")))
-  dof <- mean(c(attr(V1, "dof"), attr(V2, "dof")))
+  if (is.null(V2)) V2 <- V1 
   if (is.null(t_cutoff)) {
+    if (is.null(dof)) {
+      stopifnot(is.integer(attr(V1, "dof")))
+      stopifnot(is.integer(attr(V2, "dof")))
+      dof <- mean(c(attr(V1, "dof"), attr(V2, "dof")))
+    }
     ## should be around 6.5 for most snRNA-seq datasets
     t_cutoff <- qt(min(nominal_p_cutoff / (ncol(V1) * ncol(V2)), 1),
                    dof,
@@ -115,9 +117,12 @@ robust_se_t.default <- function(V1, V2,
   }
   comm <- intersect(colnames(V2), colnames(V1))
   M <- r_robust_se(V1, V2, t_cutoff, abs_t)
-  attr(M, "dof") <- dof
-  M[cbind(match(colnames(V2), comm),
-          match(colnames(V1), comm))] = 0
+  dimnames(M) <- list(colnames(V2), colnames(V1))
+  if (!is.null(dof)) attr(M, "dof") <- dof
+  if (length(comm) > 0) { 
+    M[cbind(match(colnames(V2), comm),
+            match(colnames(V1), comm))] <- 0
+  }
   return(Matrix::t(Matrix::drop0(M)))
 }
 

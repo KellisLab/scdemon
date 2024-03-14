@@ -41,7 +41,7 @@ def robust_prepare(U:np.ndarray, V:np.ndarray, B=None, n_components:int=None, mi
     else:
         return V1, dof, None
 
-def robust_se(U, V, B=None, t_cutoff:float=None, abs_t:bool=False, nominal_p_cutoff:float=0.05) -> scipy.sparse.csc_matrix:
+def robust_se_default(U, V, B=None, t_cutoff:float=None, abs_t:bool=False, nominal_p_cutoff:float=0.05) -> scipy.sparse.csc_matrix:
     """
     U: U from SVD
     V: V\Sigma from SVD

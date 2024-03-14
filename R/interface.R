@@ -83,3 +83,6 @@ robust_se_t.AbstractAnnData <- function(obj, covariates=NULL,
   return(adata)
 }
 
+robust_se_t.MultiAssayExperiment <- function(obj, covariates=NULL, ) {
+
+}
