@@ -44,7 +44,17 @@ ols_resid <- function(X, Y, beta) {
 #' @importFrom Rcpp evalCpp
 robust_se_X <- function(cname, Y, lambda=1e-10) {
   stopifnot(cname %in% colnames(Y))
-  setNames(r_robust_se_X(Y[,match(cname, colnames(Y))], Y), colnames(Y), lambda)
+  setNames(r_robust_se_X(Y[,match(cname, colnames(Y))], Y, lambda), colnames(Y))
+}
+
+#' Calculate regularized SE with per-Y lambda
+#' @export
+#' @useDynLib scdemon
+#' @importFrom Rcpp evalCpp
+robust_se_L <- function(cname, Y, lambda) {
+    stopifnot(cname %in% colnames(Y))
+    stopifnot(length(lambda)==ncol(Y))
+    setNames(r_robust_se_L(Y[,match(cname, colnames(Y))], Y, lambda), colnames(Y))
 }
 
 ### TODO test Y=U when U is diagonal for ols_resid. Only missing part for use=X
