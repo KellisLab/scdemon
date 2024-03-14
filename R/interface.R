@@ -68,7 +68,7 @@ robust_se_t.AbstractAnnData <- function(obj, covariates=NULL,
   rownames(U) <- obj$obs_names
   B <- .extract_covariates(covariates, obj$obs)
   V <- .robust_prepare(U=U, V=V, B=B, n_components=n_components, min_norm=min_norm, return_U=FALSE)
-  S <- robust_se_t.default(V, V, t_cutoff=t_cutoff,
+  S <- robust_se_t.default(V, V, lambda=1e-10, t_cutoff=t_cutoff,
                            abs_t=abs_t, nominal_p_cutoff=nominal_p_cutoff)
   dimnames(S) = list(colnames(V), colnames(V))
   if (nrow(S) != length(adata$var_names)) {

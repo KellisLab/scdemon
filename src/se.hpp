@@ -37,13 +37,14 @@ Eigen::MatrixXd ols_resid(const Eigen::MatrixBase<TX> &X,
 template<typename TX, typename TY>
 Eigen::ArrayXd robust_se_X(const Eigen::MatrixBase<TX> &Xmat,
 			   const Eigen::MatrixBase<TY> &Y, /* V\Sigma?? */
+			   double lambda=1e-10,
 			   double epsilon=1e-300)
 {
 	Eigen::VectorXd X = Xmat.col(0).eval();
-	double X_rsqnorm = 1/std::max(X.squaredNorm(), epsilon);
+	double X_sqnorm = std::max(X.squaredNorm().eval(), epsilon);
 	// X pseudoinverse is X' / squared_norm
-	Eigen::VectorXd beta = (X.transpose() * Y).eval() * X_rsqnorm;
-	Eigen::VectorXd var = ((X.transpose() * X_rsqnorm).cwiseAbs2() * (Y - X * beta.transpose()).cwiseAbs2()).eval();
+	Eigen::VectorXd beta = (X.transpose() * Y).eval() / (X_sqnorm + lambda);
+	Eigen::VectorXd var = ((X.transpose() / X_sqnorm).cwiseAbs2() * (Y - X * beta.transpose()).cwiseAbs2()).eval();
 	Eigen::ArrayXd tval = beta.array();
 	return tval * var.cwiseMax(epsilon).array().rsqrt();
 }
@@ -51,6 +52,7 @@ Eigen::ArrayXd robust_se_X(const Eigen::MatrixBase<TX> &Xmat,
 template<typename TX, typename TY>
 Eigen::SparseMatrix<double> robust_se(const Eigen::MatrixBase<TX> &X,
 				      const Eigen::MatrixBase<TY> &Y,
+				      double lambda=1e-10,
 				      double epsilon=1e-300,
 				      double t_cutoff=6.5,
 				      bool abs_cutoff=false)
@@ -68,7 +70,7 @@ Eigen::SparseMatrix<double> robust_se(const Eigen::MatrixBase<TX> &X,
 		for (int i = 0; i < X.cols(); i++) {
 			if (!p.check_abort()) {
 		        	p.increment();
-				Eigen::ArrayXd tv = robust_se_X(X.col(i), Y, epsilon);
+				Eigen::ArrayXd tv = robust_se_X(X.col(i), Y, lambda, epsilon);
 				for (int j = 0; j < tv.size(); j++) {
 					if (abs_cutoff && (t_cutoff <= -tv[j])) {
 						local_mat.insert(j, i) = -tv[j];

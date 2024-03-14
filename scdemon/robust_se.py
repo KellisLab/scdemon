@@ -4,11 +4,11 @@ import scipy.sparse
 from . import _core as core
 from .progress_manager import ProgressManager, _interrupt_checker
 
-def _robust_se_X(i:int, V:np.ndarray) -> np.ndarray:
-    return core.py_robust_se_X(V[:, i].astype("f8"), V.astype("f8"))
+def _robust_se_X(i:int, V:np.ndarray, lamb:float=1e-10) -> np.ndarray:
+    return core.py_robust_se_X(V[:, i].astype("f8"), V.astype("f8"), lamb)
 
-def _robust_se(X:np.ndarray, V:np.ndarray, t_cutoff:float, abs_t:bool) -> scipy.sparse.csc_matrix:
-    return core.py_robust_se(X.astype("f8"), V.astype('f8'), t_cutoff, abs_t)
+def _robust_se(X:np.ndarray, V:np.ndarray, lamb:float, t_cutoff:float, abs_t:bool) -> scipy.sparse.csc_matrix:
+    return core.py_robust_se(X.astype("f8"), V.astype('f8'), lamb, t_cutoff, abs_t)
 
 def ols_resid(X:np.ndarray, Y:np.ndarray, beta:np.ndarray) -> np.ndarray:
     return core.py_ols_resid(X.astype("f8"), Y.astype("f8"), beta.astype("f8"))

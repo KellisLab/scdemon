@@ -42,9 +42,9 @@ ols_resid <- function(X, Y, beta) {
 #' @export
 #' @useDynLib scdemon
 #' @importFrom Rcpp evalCpp
-robust_se_X <- function(cname, Y) {
+robust_se_X <- function(cname, Y, lambda=1e-10) {
   stopifnot(cname %in% colnames(Y))
-  setNames(r_robust_se_X(Y[,match(cname, colnames(Y))], Y), colnames(Y))
+  setNames(r_robust_se_X(Y[,match(cname, colnames(Y))], Y), colnames(Y), lambda)
 }
 
 ### TODO test Y=U when U is diagonal for ols_resid. Only missing part for use=X
@@ -100,6 +100,7 @@ robust_se_X <- function(cname, Y) {
 #' @importFrom Rcpp evalCpp
 robust_se_t.default <- function(V1, V2,
                                 nominal_p_cutoff=0.05,
+                                lambda=1e-10,
                                 abs_t=FALSE, dof=NULL,
                                 t_cutoff=NULL) {
   require(Matrix)
@@ -116,7 +117,7 @@ robust_se_t.default <- function(V1, V2,
                    lower.tail=FALSE)
   }
   comm <- intersect(colnames(V2), colnames(V1))
-  M <- r_robust_se(V1, V2, t_cutoff, abs_t)
+  M <- r_robust_se(V1, V2, lambda, t_cutoff, abs_t)
   dimnames(M) <- list(colnames(V2), colnames(V1))
   if (!is.null(dof)) attr(M, "dof") <- dof
   if (length(comm) > 0) { 
