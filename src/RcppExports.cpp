@@ -12,14 +12,15 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // r_ols_beta
-Eigen::MatrixXd r_ols_beta(const Eigen::Map<Eigen::MatrixXd>& X, const Eigen::Map<Eigen::MatrixXd>& Y);
-RcppExport SEXP _scdemon_r_ols_beta(SEXP XSEXP, SEXP YSEXP) {
+Eigen::MatrixXd r_ols_beta(const Eigen::Map<Eigen::MatrixXd>& X, const Eigen::Map<Eigen::MatrixXd>& Y, double lambda);
+RcppExport SEXP _scdemon_r_ols_beta(SEXP XSEXP, SEXP YSEXP, SEXP lambdaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type X(XSEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Y(YSEXP);
-    rcpp_result_gen = Rcpp::wrap(r_ols_beta(X, Y));
+    Rcpp::traits::input_parameter< double >::type lambda(lambdaSEXP);
+    rcpp_result_gen = Rcpp::wrap(r_ols_beta(X, Y, lambda));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -46,6 +47,19 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Y(YSEXP);
     Rcpp::traits::input_parameter< double >::type lambda(lambdaSEXP);
     rcpp_result_gen = Rcpp::wrap(r_robust_se_X(X, Y, lambda));
+    return rcpp_result_gen;
+END_RCPP
+}
+// r_ols_beta_L
+Eigen::MatrixXd r_ols_beta_L(const Eigen::Map<Eigen::VectorXd>& X, const Eigen::Map<Eigen::MatrixXd>& Y, const Eigen::Map<Eigen::ArrayXd>& lambda);
+RcppExport SEXP _scdemon_r_ols_beta_L(SEXP XSEXP, SEXP YSEXP, SEXP lambdaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::VectorXd>& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::ArrayXd>& >::type lambda(lambdaSEXP);
+    rcpp_result_gen = Rcpp::wrap(r_ols_beta_L(X, Y, lambda));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -79,9 +93,10 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_scdemon_r_ols_beta", (DL_FUNC) &_scdemon_r_ols_beta, 2},
+    {"_scdemon_r_ols_beta", (DL_FUNC) &_scdemon_r_ols_beta, 3},
     {"_scdemon_r_ols_resid", (DL_FUNC) &_scdemon_r_ols_resid, 3},
     {"_scdemon_r_robust_se_X", (DL_FUNC) &_scdemon_r_robust_se_X, 3},
+    {"_scdemon_r_ols_beta_L", (DL_FUNC) &_scdemon_r_ols_beta_L, 3},
     {"_scdemon_r_robust_se_L", (DL_FUNC) &_scdemon_r_robust_se_L, 3},
     {"_scdemon_r_robust_se", (DL_FUNC) &_scdemon_r_robust_se, 5},
     {NULL, NULL, 0}

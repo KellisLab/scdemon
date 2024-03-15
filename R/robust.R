@@ -6,7 +6,7 @@
 #' @export
 #' @useDynLib scdemon
 #' @importFrom Rcpp evalCpp
-ols_beta <- function(X, Y) {
+ols_beta <- function(X, Y, lambda=0) {
   if (Matrix::isDiagonal(X)) {
     return(Matrix::Diagonal(x=1/Matrix::diag(X)) %*% Y)
   }
@@ -17,7 +17,8 @@ ols_beta <- function(X, Y) {
   } else {
     stopifnot(nrow(X)==length(Y))
   }
-  beta <- r_ols_beta(X, Y)
+  stopifnot(lambda >= 0)
+  beta <- r_ols_beta(X, Y, lambda)
   dimnames(beta) <- list(colnames(X), colnames(Y))
   return(beta)
 }

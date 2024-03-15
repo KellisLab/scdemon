@@ -10,9 +10,10 @@
   
 // [[Rcpp::export]]
 Eigen::MatrixXd r_ols_beta(const Eigen::Map<Eigen::MatrixXd> &X,
-			   const Eigen::Map<Eigen::MatrixXd> &Y)
+			   const Eigen::Map<Eigen::MatrixXd> &Y,
+                           double lambda)
 {
-	return ols_beta(X, Y);
+	return ols_beta(X, Y, lambda);
 }
 
 // [[Rcpp::export]]
@@ -31,6 +32,13 @@ Eigen::ArrayXd r_robust_se_X(const Eigen::Map<Eigen::MatrixXd> &X,
 	return robust_se_X(X, Y, lambda, 1e-300);
 }
 
+// [[Rcpp::export]]
+Eigen::MatrixXd r_ols_beta_L(const Eigen::Map<Eigen::VectorXd> &X,
+                             const Eigen::Map<Eigen::MatrixXd> &Y,
+                             const Eigen::Map<Eigen::ArrayXd> &lambda)
+{
+	return ols_beta_L(X.eval(), X.squaredNorm(), Y, lambda);
+}
 // [[Rcpp::export]]
 Eigen::ArrayXd r_robust_se_L(const Eigen::Map<Eigen::MatrixXd> &X,
 			     const Eigen::Map<Eigen::MatrixXd> &Y,
