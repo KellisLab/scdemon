@@ -43,7 +43,7 @@ Eigen::MatrixXd ols_resid(const Eigen::MatrixBase<TX> &X,
  */
 template<typename TX, typename TY>
 Eigen::ArrayXd robust_se_X(const Eigen::MatrixBase<TX> &Xmat,
-			   const Eigen::MatrixBase<TY> &Y, /* V\Sigma?? */
+			   const Eigen::MatrixBase<TY> &Y,
 			   double lambda=1e-10,
 			   double epsilon=1e-300)
 {
@@ -56,6 +56,32 @@ Eigen::ArrayXd robust_se_X(const Eigen::MatrixBase<TX> &Xmat,
 	return tval * var.cwiseMax(epsilon).array().rsqrt();
 }
 
+#include <iostream>
+/* Each column of X versus Y */
+template<typename TX, typename TY>
+Eigen::ArrayXd robust_se_Y(const Eigen::MatrixBase<TX> &X,
+			   const Eigen::MatrixBase<TY> &Ymat,
+			   double lambda=1e-10,
+			   double epsilon=1e-300)
+{
+  
+	Eigen::VectorXd Y = Ymat.col(0);
+        Eigen::ArrayXd X_sqnorm = X.colwise().squaredNorm().cwiseMax(epsilon).array();
+	// X pseudoinverse is X' / squared_norm
+	Eigen::VectorXd beta = ((X.transpose() * Y).array() / (X_sqnorm + lambda)).matrix().eval();
+	Eigen::MatrixXd res2 = X * beta.asDiagonal();
+	res2.colwise() -= Y;
+	res2 = res2.cwiseAbs2();
+	//Eigen::MatrixXd res2 = (Y - (X * beta.asDiagonal()).colwise()).cwiseAbs2().eval();
+	std::cout << "res2 R:" << res2.rows() << " C:" << res2.cols()  << std::endl;
+	Eigen::MatrixXd pinv2 = (X * (1/X_sqnorm).matrix().asDiagonal()).cwiseAbs2().eval();
+	std::cout << "pinv2 R:" << pinv2.rows() << " C:" << pinv2.cols()  << std::endl;
+	Eigen::VectorXd var = (pinv2.array() * res2.array()).colwise().sum();
+	std::cout << "var size:" << var.size() << std::endl;
+	//Eigen::VectorXd var = ((X * (1/X_sqnorm).matrix().asDiagonal()).transpose().cwiseAbs2() * (Y - X * beta.asDiagonal()).cwiseAbs2()).eval();
+	Eigen::ArrayXd tval = beta.array();
+	return tval * var.cwiseMax(epsilon).array().rsqrt();
+}
 template<typename TY, typename TL>
 Eigen::VectorXd ols_beta_L(Eigen::VectorXd X, double X_sqnorm,
                            const Eigen::MatrixBase<TY> &Y,

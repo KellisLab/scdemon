@@ -13,6 +13,10 @@ r_robust_se_X <- function(X, Y, lambda = 1e-10) {
     .Call('_scdemon_r_robust_se_X', PACKAGE = 'scdemon', X, Y, lambda)
 }
 
+r_robust_se_Y <- function(X, Y, lambda = 1e-10) {
+    .Call('_scdemon_r_robust_se_Y', PACKAGE = 'scdemon', X, Y, lambda)
+}
+
 r_ols_beta_L <- function(X, Y, lambda) {
     .Call('_scdemon_r_ols_beta_L', PACKAGE = 'scdemon', X, Y, lambda)
 }
