@@ -62,7 +62,7 @@ robust_se_L <- function(cname, Y, lambda) {
 #' @export
 #' @useDynLib scdemon
 #' @importFrom Rcpp evalCpp
-.robust_prepare <- function(U, V, B=NULL, n_components=NULL, min_norm=1e-5, return_U=FALSE) {
+.robust_prepare <- function(U, V, B=NULL, n_components=NULL, min_norm=1e-5, return_U=FALSE, lambda=0) {
   stopifnot(ncol(U)==nrow(V))
   if (!is.null(n_components)) {
     stopifnot(n_components > 0)
@@ -78,20 +78,21 @@ robust_se_L <- function(cname, Y, lambda) {
     cat("Filtering norm\n")
     V <- V[, apply(V, 2, norm, "2") >= min_norm]
   }
+  xform = ols_beta(X=U, Y=B, lambda=lambda) %*% ols_beta(X=B, Y=U, lambda=lambda)
   cat("Decomposing V with SVD\n")
-  V_svd <- svd(V)
+  V_svd <- svd(V - xform %*% V)
   rownames(V_svd$v) <- colnames(V)
   ## group orthogonal items
   ## TODO sample sqrt(U)? Experiment with U sampling size
-  U <- U %*% V_svd$u 
+
   cat("Extracting non-orthogonal residuals\n")
-  lhs_qr <- qr(ols_resid(X=B, Y=U, beta=ols_beta(X=B, Y=U)))
+  QR <- qr(U %*% V_svd$u)
   cat("Computing new embedding\n")
-  RS_svd <- svd(qr.R(lhs_qr) %*% diag(V_svd$d))
+  RS_svd <- svd(qr.R(QR) %*% diag(V_svd$d))
   V <- diag(RS_svd$d) %*% t(RS_svd$v) %*% t(V_svd$v)
   attr(V, "dof") <- nrow(B) - ncol(B)
   if (return_U) {
-    U <- qr.Q(lhs_qr) %*% RS_svd$u
+    U <- qr.Q(QR) %*% RS_svd$u
     rownames(U) <- rownames(B)
     attr(V, "U") <- U
   }
