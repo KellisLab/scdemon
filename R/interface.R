@@ -71,16 +71,16 @@ robust_se_t.AbstractAnnData <- function(obj, covariates=NULL,
   S <- robust_se_t.default(V, V, lambda=1e-10, t_cutoff=t_cutoff,
                            abs_t=abs_t, nominal_p_cutoff=nominal_p_cutoff)
   dimnames(S) = list(colnames(V), colnames(V))
-  if (nrow(S) != length(adata$var_names)) {
-    D <- Matrix::sparseMatrix(i=match(rownames(S), adata$var_names),
+  if (nrow(S) != length(obj$var_names)) {
+    D <- Matrix::sparseMatrix(i=match(rownames(S), obj$var_names),
                               j=seq_len(nrow(S)),
-                              dims=c(length(adata$var_names),
+                              dims=c(length(obj$var_names),
                                      nrow(S)),
-                              dimnames=list(adata$var_names, NULL))
+                              dimnames=list(obj$var_names, NULL))
     S <- D %*% S %*% Matrix::t(D)
   }
-  adata$varp[[key_added]] <- S
-  return(adata)
+  obj$varp[[key_added]] <- S
+  return(obj)
 }
 
 robust_se_t.MultiAssayExperiment <- function(obj, covariates=NULL) {
