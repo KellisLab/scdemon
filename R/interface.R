@@ -48,7 +48,7 @@ robust_se_t.AbstractAnnData <- function(obj, covariates=NULL,
                                         min_norm=1e-5) {
   if (length(method) > 1) {
     U <- obj$obsm[[method[[1]] ]]
-    V <- obj$varm[[method[[2]] ]]
+    V <- t(obj$varm[[method[[2]] ]])
   } else if (method == "pca") {
     U <- obj$obsm$X_pca
     V <- t(obj$varm$PCs)
