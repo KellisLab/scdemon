@@ -62,7 +62,7 @@ robust_se_L <- function(cname, Y, lambda) {
 #' @export
 #' @useDynLib scdemon
 #' @importFrom Rcpp evalCpp
-.robust_prepare <- function(U, V, B=NULL, n_components=NULL, min_norm=1e-5, return_U=FALSE, lambda=0) {
+.robust_prepare <- function(U, V, B=NULL, n_components=NULL, min_norm=1e-5, return_U=FALSE, lambda=0, power=1) {
   stopifnot(ncol(U)==nrow(V))
   if (!is.null(n_components)) {
     stopifnot(n_components > 0)
@@ -89,10 +89,10 @@ robust_se_L <- function(cname, Y, lambda) {
   QR <- qr(U %*% V_svd$u)
   cat("Computing new embedding\n")
   RS_svd <- svd(qr.R(QR) %*% diag(V_svd$d))
-  V <- diag(RS_svd$d) %*% t(RS_svd$v) %*% t(V_svd$v)
+  V <- diag(RS_svd$d**power) %*% t(RS_svd$v) %*% t(V_svd$v)
   attr(V, "dof") <- nrow(B) - ncol(B)
   if (return_U) {
-    U <- qr.Q(QR) %*% RS_svd$u
+    U <- qr.Q(QR) %*% RS_svd$u %*% diag(RS_svd$d ** (1-power))
     rownames(U) <- rownames(B)
     attr(V, "U") <- U
   }
