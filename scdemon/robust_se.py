@@ -2,7 +2,7 @@ import numpy as np
 import scipy.sparse
 
 from . import _core as core
-from .progress_manager import ProgressManager, _interrupt_checker
+from .utils import ProgressManager, _interrupt_checker
 
 def _robust_se_X(i:int, V:np.ndarray, lamb:float=1e-10) -> np.ndarray:
     return core.py_robust_se_X(V[:, i].astype("f8"), V.astype("f8"), lamb)
