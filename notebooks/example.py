@@ -6,10 +6,12 @@
 # ---------------------------------------------------------------------
 import logging
 import os
-import scdemon as sm
 import scanpy as sc
 import numpy as np
-from scdemon.auxiliary import recipe_full
+
+import scdemon as sm
+from scdemon.utils import recipe_full
+from scdemon import plotting as pl
 
 # Set logging level:
 logging.basicConfig(level=logging.INFO)
@@ -33,14 +35,14 @@ logging.info("Loaded example dataset")
 imgdir = "./"
 # Make the scmodule object:
 max_k = 100
-mod = sm.scmodule(adata,
-                  # Where files+plots go / what they are called:
-                  csuff=tag, imgdir=imgdir,
-                  # Options for graph creation:
-                  estimate_sd=False,
-                  svd_k=max_k, filter_expr=0.05, z=4.5,
-                  # Overall usage/correlation computation options:
-                  calc_raw=False)
+mod = sm.modules(adata,
+                 # Where files+plots go / what they are called:
+                 csuff=tag, imgdir=imgdir,
+                 # Options for graph creation:
+                 estimate_sd=False,
+                 svd_k=max_k, filter_expr=0.05, z=4.5,
+                 # Overall usage/correlation computation options:
+                 calc_raw=False)
 mod.setup()  # Setup the object
 
 
@@ -48,18 +50,20 @@ mod.setup()  # Setup the object
 # ------------------------------------------------------------
 graph_id = "base"
 mod.make_graph(graph_id, resolution=2.5)
-mod.plot_graph(graph_id, attr="leiden", show_labels=True, width=16)
-mod.plot_gene_umap(graph_id, attr="leiden", width=16)
 
-# Modules on cell UMAP:
-mod.plot_umap_grid(graph_id)
+# Plot genes on gene-gene graph and on gene UMAP basis
+pl.plot_genes(mod, graph_id, attr="leiden", show_labels=True, width=16)
+pl.plot_genes(mod, graph_id, basis='umap', attr="leiden", width=16)
+
+# Plot module expression on the cell UMAP basis:
+pl.plot_umap_grid(mod, graph_id)
 
 # Get the modules/print out:
 mlist = mod.get_modules(graph_id, print_modules=False)
 mod.save_modules(graph_id)
 
 # Get functional enrichments for the modules:
-gpres = mod.get_goterms(graph_id)
+gpres = sm.get_goterms(mod, graph_id)
 
 
 # We can plot additional plots on the gene modules graph or UMAP:
@@ -67,19 +71,23 @@ gpres = mod.get_goterms(graph_id)
 # Plot the logFC for a specific covariate on the graph:
 graph_id = "base"
 covariate = "leiden"
-mod.plot_gene_logfc(graph_id, attr=covariate,
-                    show_labels=False, width=16, fc_cut=2)
+pl.plot_gene_logfc(mod, graph_id, attr=covariate,
+                   show_labels=False, width=16, fc_cut=2)
 
 # Plot correlation of SVD components with covariates:
 cvlist = ["n_genes", "leiden"]
-mod.plot_svd_corr(cvlist)
+pl.plot_svd_corr(mod, cvlist)
 
 # Plot the average expression of leiden modules on covariates:
-mod.plot_heatmap_avgexpr(graph_id, cvlist=cvlist, attr="leiden")
+pl.plot_heatmap_avgexpr(mod, graph_id, cvlist=cvlist, attr="leiden")
 
 # Make a graph from only specific SVD covariate-correlated components
 # Such as components correlated with celltypes:
+graph_id = 'subset'
 mod.make_subset_graph(graph_id, "leiden", cv_cutoff=2.0)
-mod.plot_graph(graph_id + "_cls", attr="leiden", show_labels=True, width=16)
-mod.plot_heatmap_avgexpr(graph_id, cvlist=['leiden'], attr="leiden")
-mod.plot_umap_grid(graph_id)
+
+# Plot these:
+pl.plot_genes(mod, graph_id, attr="leiden", show_labels=True, width=16)
+pl.plot_heatmap_avgexpr(mod, graph_id, cvlist=['leiden'], attr="leiden")
+pl.plot_umap_grid(mod, graph_id)
+

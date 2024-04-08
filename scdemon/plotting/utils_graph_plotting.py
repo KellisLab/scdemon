@@ -22,7 +22,7 @@ standard_visual_style["edge_width"] = 0.5
 
 
 # TODO: Improve method by connectivity / (cross-connect leiden)
-def select_label_subset(assign, labels, frac_labels):
+def _select_label_subset(assign, labels, frac_labels):
     """Select a subset of labels to plot."""
     frac_labels = 0 if frac_labels < 0 else frac_labels
     # Subset labels:
@@ -49,28 +49,22 @@ def select_label_subset(assign, labels, frac_labels):
     return labels
 
 
-def plot_adjusted_labels(labels, layout, ax, adjust_labels=True, fontsize=12):
+def _add_labels(labels, layout, ax, adjust_labels=True, fontsize=12):
     """Adjust and plot non-empty labels given labels and their positions."""
     keptind = np.where(np.array(labels) != "")[0].tolist()
     if len(keptind) > 0:
         layout_list = list(layout)
-        text = [ax.text(layout_list[i][0],
-                        layout_list[i][1],
-                        labels[i],
-                        ha="center",
-                        va="center",
-                        fontsize=fontsize)
+        text = [ax.text(layout_list[i][0], layout_list[i][1], labels[i],
+                        ha="center", va="center", fontsize=fontsize)
                 for i in keptind]
-        # TODO: Check that non-adjusted works.
         if adjust_labels:
             adjust_text(text, lim=25)
 
 
 # TODO: allow extra suffix for graph (e.g. if params are different)
-def plot_gene_graph(graph, layout, assign, plotname=None, col=None, width=24,
-                    ax=None, title=None,
-                    # Label specifications:
-                    show_labels=True, frac_labels=1.0, adjust_labels=False):
+def _plot_gene_graph_core(graph, layout, assign, plotname=None, col=None,
+                          width=24, ax=None, title=None, show_labels=True,
+                          frac_labels=1.0, adjust_labels=False):
     """Plot a gene-gene graph."""
     # Parameters for saving / plotting subplots:
     standalone = (ax is None)
@@ -91,9 +85,9 @@ def plot_gene_graph(graph, layout, assign, plotname=None, col=None, width=24,
 
     # Set label specifications and plot labels if required:
     if show_labels:
-        labels = select_label_subset(assign, graph.vs["name"], frac_labels)
-        plot_adjusted_labels(labels, layout, ax=ax,
-                             adjust_labels=adjust_labels, fontsize=12)
+        labels = _select_label_subset(assign, graph.vs["name"], frac_labels)
+        _add_labels(labels, layout, ax=ax,
+                   adjust_labels=adjust_labels, fontsize=12)
 
     # Clean up and save plot if not subplot, etc.
     if save_plot:
@@ -104,8 +98,8 @@ def plot_gene_graph(graph, layout, assign, plotname=None, col=None, width=24,
         logging.info("Plotted graph to " + plotname)
 
 
-def plot_gene_umap(umat, col=None, plotname=None,
-                   ax=None, title=None, width=12):
+def _plot_gene_umap_core(umat, col=None, plotname=None,
+                         ax=None, title=None, width=12):
     # Parameters for saving / plotting subplots:
     standalone = (ax is None)
     save_plot = (standalone) and (plotname is not None)

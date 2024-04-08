@@ -1,8 +1,7 @@
 #!/usr/bin/python
-"""Auxiliary functions for correlation and scanpy pre-processing."""
-import pandas as pd
+"""Auxiliary functions for correlation"""
 import numpy as np
-import scanpy as sc
+import pandas as pd
 import logging
 
 
@@ -40,27 +39,3 @@ def calculate_svd_covar_corr(ut, obsdf, cvlist, cv_mats={}):
                     ut, cvcol[:, np.newaxis].T)[:, np.newaxis]
     return(cv_mats)
 
-
-# Simple recipes for scanpy pre-processing
-# ----------------------------------------
-def recipe_preprocess(adata):
-    sc.pp.filter_genes(adata, min_cells=3)
-    sc.pp.filter_cells(adata, min_genes=100)
-    sc.pp.normalize_total(adata)
-    sc.pp.log1p(adata)
-    logging.info("Preprocessed example dataset")
-
-
-def recipe_annotate(adata):
-    sc.tl.pca(adata)
-    sc.pp.neighbors(adata)
-    sc.tl.umap(adata)
-    sc.tl.leiden(adata)
-    logging.info("Annotated example dataset")
-
-
-def recipe_full(adata, preprocess, annotate):
-    if preprocess:
-        recipe_preprocess(adata)
-    if annotate:
-        recipe_annotate(adata)

@@ -1,11 +1,10 @@
 #!/usr/bin/python
-"""Class for computing modules on adata object."""
+"""[WORKING] Reduced class for computing modules on adata object."""
 
 # Internal:
 from .graph import gene_graph
 from .correlation import correlation
 from .auxiliary import calculate_svd_covar_corr
-from .plotting import plot_umap_grid, plot_svd_corr
 from .utils_multigraph import make_graphlist, partition_graphlist
 
 import os
@@ -20,16 +19,8 @@ from scipy import sparse
 import igraph
 import contextlib
 
-# Plotting:
-from matplotlib import pyplot as plt
-from matplotlib.colors import Normalize, rgb2hex
-import seaborn as sns
 
-# For GO annotations (needs connection):
-from gprofiler import GProfiler
-
-
-class scmodule(object):
+class modules(object):
     """
     Calculate gene modules from anndata or stand-alone matrix.
     """
@@ -67,7 +58,6 @@ class scmodule(object):
         # Additional metadata / files:
         self.graphs = {}  # Store computed graphs
         self.cv_mats = {}
-        self.gp = GProfiler(return_dataframe=True)
 
     # TODO: Enable this to work with / without an adata object
     def setup(self):
@@ -138,23 +128,16 @@ class scmodule(object):
         else:
             self.corr_mean, self.corr_sd = None, None
 
-    def _make_graph_object(self,
-                           graph_id,
-                           corr,
-                           graph=None,
-                           corr_sd=None,
-                           cutoff=None,
-                           edge_weight=None,
-                           knn_k=None,
-                           scale=None,
-                           z=None,
-                           degree_cutoff=0,
-                           min_size=4,
-                           use_zscore=True,
+    # TODO: Simplify inheritance of kwargs params:
+    def _make_graph_object(self, graph_id, corr,
+                           graph=None, corr_sd=None,
+                           cutoff=None, edge_weight=None,
+                           knn_k=None, scale=None,
+                           z=None, degree_cutoff=0,
+                           min_size=4, use_zscore=True,
                            layout_method="fr"):
         if z is not None:
             self.z = z
-        # TODO: Simplify inheritance of kwargs params:
         self.graphs[graph_id] = gene_graph(
             corr,
             genes=self.genes,
@@ -349,72 +332,6 @@ class scmodule(object):
         if return_genes:
             return out
 
-    def save_modules(self, graph_id, attr="leiden", as_df=True,
-                     filedir="./", filename=None):
-        """Save module list for a specific graph as txt or tsv."""
-        if filename is None:
-            filename = filedir + "module_df_" + self.csuff + "_" + \
-                attr + "_" + graph_id
-            filename += ".tsv" if as_df else ".txt"
-        self.graphs[graph_id].save_modules(
-            attr=attr, as_df=as_df, filename=filename)
-
-    def plot_graph(self, graph_id, attr=None, show_labels=None,
-                   frac_labels=1.0, adjust_labels=False, width=20):
-        if graph_id not in self.graphs:
-            # TODO: Default to quantiles.
-            self.make_graph(graph_id)  # Default to this
-        # Plot graph object, both ways:
-        self.graphs[graph_id].plot(basis='graph',
-                                   attr=attr,
-                                   show_labels=show_labels,
-                                   frac_labels=frac_labels,
-                                   adjust_labels=adjust_labels,
-                                   width=width,
-                                   suffix=self.csuff + "_" + graph_id,
-                                   imgdir=self.imgdir)
-
-    # Calculate UMAP representation and plot the genes on it:
-    def plot_gene_umap(self, graph_id, attr=None, width=12):
-        self.graphs[graph_id].plot(basis='umap', attr=attr, width=width,
-                                   suffix=self.csuff + "_" + graph_id,
-                                   imgdir=self.imgdir)
-
-    # TODO: Add plot of arbitrary vectors (e.g. margin)
-    def plot_gene_logfc(self, graph_id, basis='graph', attr="celltype",
-                        fc_cut=2, **kwargs):
-        logging.info("Running rank genes on", attr)
-        sc.tl.rank_genes_groups(self.adata, attr)
-        iscat = self.adata.obs[attr].dtype.name == "category"
-        # TODO: Figure out to deal with non-categorical
-        # Color map:
-        cmap = plt.cm.RdYlBu  # TODO: allow other options
-        norm = Normalize(vmin=-fc_cut, vmax=fc_cut)
-        # Turn into assignment:
-        narr = self.adata.uns["rank_genes_groups"]["names"]
-        larr = self.adata.uns["rank_genes_groups"]["logfoldchanges"]
-        parr = self.adata.uns["rank_genes_groups"]["pvals_adj"]
-        names = list(narr.dtype.names)
-        for name in names:
-            namestr = attr + "_" + re.sub("[ /]", "_", name)
-            logging.info("Plotting for" + str(namestr))
-            # TODO: Pass the list of names + a score to the gene graph instead
-            n1 = np.array(narr[name])
-            xind = np.array([np.where(n1 == x)[0][0]
-                             for x in self.graphs[graph_id].graph.vs["name"]])
-            n1 = n1[xind]
-            l1 = np.array(larr[name])[xind]
-            p1 = np.array(parr[name])[xind]
-            l1 = l1 * (p1 < 0.05)
-            l1[l1 < -fc_cut] = -fc_cut
-            l1[l1 > fc_cut] = fc_cut
-            # Color mapping:
-            vcols = [rgb2hex(c) for c in cmap(norm(-l1))]
-            # Plot graph:
-            self.graphs[graph_id].plot(basis=basis, attr=namestr, color=vcols,
-                                       suffix=self.csuff + "_" + graph_id,
-                                       imgdir=self.imgdir, **kwargs)
-
     def _calculate_covariate_lengths(self):
         if not hasattr(self, 'cv_lengths'):
             self.cv_lengths = {}
@@ -431,112 +348,22 @@ class scmodule(object):
                     self.cv_lengths[covar] = 1
                     self.cv_ticks[covar] = False
 
-    # TODO: Keep refactoring suff to graph_id below here:
-    # TODO: add plotting scale parameters:
-    # TODO: Clean up - use pre-computed scores!
-    def plot_heatmap_avgexpr(self, graph_id, cvlist=None,
-                             attr="leiden", cbar=False):
-        """Plot heatmap of module average expression in each covariate."""
-        plotname = self.imgdir + "heatmap_" + \
-            self.csuff + "_" + graph_id + "_" + attr + ".png"
-        if cvlist is None:
-            cvlist = ["celltype", "region", "niareagansc",
-                      "cogdx", "Apoe_e4", "msex"]
-        self._calculate_covariate_lengths()
-        hratio = [1] + [self.cv_lengths[covar] for covar in cvlist]
-        hfull = np.sum(hratio)
-        # For subgraph colors heatmap:
-        partition = self.graphs[graph_id].assign[attr]
-        part_cols = self.graphs[graph_id].colors[attr]
-        u, c = np.unique(partition, return_index=True)
-        col_mat = u[np.newaxis, :]
-        col_cmap = sns.color_palette(part_cols[c])
-        # Make heatmap figure:
-        scores = self.graphs[graph_id].scores[attr]
-        w = 7 * scores.shape[1] / 20 + 1.2 + 0.8 * cbar
-        h = 2 * hfull / 6 + 0.1 * len(cvlist)
-        fig, axs = plt.subplots(len(cvlist) + 1, 1, figsize=(w, h),
-                                gridspec_kw={"height_ratios": hratio,
-                                             "hspace": 0.05,
-                                             "left": 1.2 / w,
-                                             "right": 1 - 0.8 / w,
-                                             "top": 1 - 0.1 / h,
-                                             "bottom": 0.4 / h})
-        # Plot the module colors:
-        sns.heatmap(col_mat, yticklabels=False, xticklabels=False,
-                    cmap=col_cmap, ax=axs[0], cbar=False)
-        # NOTE: only works for categorical covariates:
-        for i, covar in enumerate(cvlist):
-            covar_dummy = pd.get_dummies(self.adata.obs[covar])
-            covar_dummy = covar_dummy.to_numpy()
-            covar_cols = np.sum(covar_dummy, axis=0)
-            tform = covar_dummy / covar_cols[np.newaxis, :]
-            avg_lmat = tform.T.dot(scores)
-            scaled_lmat = avg_lmat / np.sum(avg_lmat, axis=0)[np.newaxis, :]
-            sns.heatmap(scaled_lmat,
-                        yticklabels=self.cv_ticks[covar],
-                        xticklabels=(i == len(cvlist) - 1),
-                        cmap="Blues", ax=axs[i + 1], cbar=cbar)
-            axs[i + 1].set_ylabel(covar, fontsize=14)
-        # Save heatmap figure:
-        plt.tight_layout()
-        plt.savefig(plotname)
-        plt.close()
-        print("Plotted graph to " + plotname)
-
     def calc_svd_corr(self, cvlist):
         self.cv_mats = calculate_svd_covar_corr(
             self.cobj.U.T, self.adata.obs, cvlist, cv_mats=self.cv_mats)
 
-    def plot_svd_corr(self, cvlist, cbar=False):
-        self.calc_svd_corr(cvlist)
-        plotname = self.imgdir + "svd_corr_" + self.csuff + ".png"
-        self._calculate_covariate_lengths()
-        cv_hratio = [self.cv_lengths[covar] for covar in cvlist]
-        plot_svd_corr(cvlist=cvlist,
-                      cv_hratio=cv_hratio,
-                      cv_mats=self.cv_mats,
-                      cv_ticks=self.cv_ticks,
-                      svec=self.cobj.s,
-                      plotname=plotname,
-                      cbar=cbar)
 
-    # TODO: Plot a single module, several, or all modules:
-    def plot_umap_grid(self, graph_id, attr='leiden', plotname=None,
-                       ind=None, sel=None, width=2, s=0.5):
-        if plotname is None:
-            plotname = self.imgdir + "module_umap_grid_" + \
-                self.csuff + "_" + graph_id + ".png"
-        # Plot umap grid:
-        plot_umap_grid(umat=self.adata.obsm["X_umap"],
-                       scores=self.graphs[graph_id].scores[attr],
-                       titles=self.graphs[graph_id].mnames[attr],
-                       plotname=plotname,
-                       ind=ind, sel=sel, width=width, s=s)
-
-    # TODO: Save enrichments for each graph/config
-    def get_goterms(self, graph_id, attr="leiden", organism="hsapiens",
-                    sources=["GO:CC", "GO:BP", "GO:MF",
-                             "REAC", "WP", "KEGG", "CORUM"]):
-        # NOTE: Can't run from private node - internet issue:
-        mlist = self.get_modules(graph_id)
-        self.gpres = {}
-        for ll in mlist.keys():
-            testlist = mlist[ll].tolist()
-            logging.info(str(ll) + ": " + " ".join(testlist))
-            self.gpres[ll] = self.gp.profile(
-                organism=organism, query=testlist, sources=sources)
-            logging.info(self.gpres[ll].head())
-        return self.gpres
-
-    def plot_df_enrichment(self, df, col, graph_id, suffix,
-                           attr='leiden', title=None, ext="png"):
-        plotname = self.imgdir + "modules_degenr_heatmap_" + \
-            suffix + "." + ext
-        statsdf = self.graphs[graph_id].plot_df_enrichment(
-            df=df, col=col, attr=attr,
-            plotname=plotname, title=title)
-        return(statsdf)
+    # Functions for saving modules or the full object:
+    # ------------------------------------------------
+    def save_modules(self, graph_id, attr="leiden", as_df=True,
+                     filedir="./", filename=None):
+        """Save module list for a specific graph as txt or tsv."""
+        if filename is None:
+            filename = filedir + "module_df_" + self.csuff + "_" + \
+                attr + "_" + graph_id
+            filename += ".tsv" if as_df else ".txt"
+        self.graphs[graph_id].save_modules(
+            attr=attr, as_df=as_df, filename=filename)
 
     def save_adata(self):
         """Save adata for saving object."""

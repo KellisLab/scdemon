@@ -5,8 +5,6 @@
 # Updated: 06/28/21
 # --------------------------------
 from .adjacency_matrix import adjacency_matrix
-from .utils_graph_plotting import plot_gene_graph, plot_gene_umap
-from .utils_enrichment import plot_df_enrichment
 from ..auxiliary import vcorrcoef
 from ..data import snap_colors
 
@@ -227,51 +225,6 @@ class gene_graph(object):
         uw = umap.UMAP()
         self.umat = uw.fit_transform(corr_gene_subset)
 
-    def plot(self, basis='graph', attr=None, color=None,
-             imgdir='./', suffix=None, ext='png', **kwargs):
-        """Plot the genes under a specific basis (umap/graph)."""
-        # Set color from attribute and specify plotname:
-        # TODO: clean up how colors are handled
-        plotname = imgdir + basis + "_"
-        if attr is None:
-            col = None
-        else:
-            if color is not None:
-                self.colors[attr] = color
-            col = self.colors[attr]
-            plotname += str(attr) + "_"
-        if suffix is not None:
-            plotname += suffix + "." + ext
-
-        # Plot the genes on a specific basis (graph/umap):
-        if basis == 'graph':
-            self.plot_graph(col=col, plotname=plotname, attr=attr, **kwargs)
-        elif basis == 'umap':
-            if self.umat is None:
-                self._compute_umap()
-            self.plot_umap(col=col, plotname=plotname, **kwargs)
-
-    def plot_umap(self, col=None, plotname=None,
-                  ax=None, title=None, width=12):
-        """Plot the gene UMAP plot with a specified attribute."""
-        plot_gene_umap(self.umat, col=col,
-                       width=width, title=title,
-                       plotname=plotname, ax=ax)
-
-    def plot_graph(self, col=None, width=24, plotname=None, ax=None,
-                   title=None, attr='leiden',
-                   show_labels=True, frac_labels=1.0, adjust_labels=False):
-        """Plot the gene-gene graph with a specified attribute."""
-        if not hasattr(self, 'layout'):
-            self.layout_graph(layout_method=self.layout_method)
-        plot_gene_graph(graph=self.graph, layout=self.layout,
-                        assign=self.assign['leiden'],
-                        plotname=plotname, ax=ax, title=title,
-                        col=col, width=width,
-                        show_labels=show_labels,
-                        frac_labels=frac_labels,
-                        adjust_labels=adjust_labels)
-
     def get_modules(self, attr="leiden", print_modules=False):
         """Get list of modules from graph and clustering."""
         if attr not in self.modules.keys():
@@ -378,10 +331,3 @@ class gene_graph(object):
                     line = str(key) + ": " + " ".join(mod_list[key]) + "\n"
                     f.write(line)
         logging.info("Wrote modules to:" + str(filename))
-
-    def plot_df_enrichment(self, df, col, plotname, attr='leiden', title=None):
-        statsdf = plot_df_enrichment(df=df, col=col, genes=self.genes,
-                                     module_match=self.module_match[attr],
-                                     mnames=self.mnames[attr],
-                                     plotname=plotname, title=title)
-        return(statsdf)

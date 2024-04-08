@@ -1,5 +1,5 @@
 #!/usr/bin/python
-"""Plotting functions for modules."""
+"""UMAP plotting - grid of modules."""
 import logging
 import numpy as np
 from matplotlib import pyplot as plt
@@ -9,7 +9,8 @@ import seaborn as sns
 import textwrap # TODO: Remove dependency
 
 
-def plot_cell_umap(umat, c, plotname=None, ax=None, title=None,
+# TODO: make function for this
+def _plot_cell_umap(umat, c, plotname=None, ax=None, title=None,
                    s=1, width=8, axlab=False, cmap='viridis'):
     """Plot single umap with given scores as colors."""
     mx = np.max(umat, axis=0)
@@ -41,7 +42,7 @@ def plot_cell_umap(umat, c, plotname=None, ax=None, title=None,
 
 
 # TODO: Should width be the full size?
-def plot_umap_grid(umat, scores, titles, plotname=None,
+def _plot_umap_grid(umat, scores, titles, plotname=None,
                    ind=None, sel=None, width=2, s=0.5):
     """Plot modules scores on UMAP as a grid."""
     nplot = scores.shape[1] if sel is None else len(sel)
@@ -68,8 +69,8 @@ def plot_umap_grid(umat, scores, titles, plotname=None,
             if k < nplot:
                 k = k if sel is None else sel[k]
                 title = None if titles is None else titles[k]
-                plot_cell_umap(umat=umat, c=scores[:, k],
-                               title=title, s=s, ax=ax)
+                _plot_cell_umap(umat=umat, c=scores[:, k],
+                                title=title, s=s, ax=ax)
             else:
                 ax.set_facecolor("white")
                 ax.axes.get_xaxis().set_visible(False)
@@ -81,32 +82,17 @@ def plot_umap_grid(umat, scores, titles, plotname=None,
     logging.info("Plotted grid of modules on UMAP to: " + plotname)
 
 
-def plot_svd_corr(cvlist, cv_hratio, cv_mats, cv_ticks, svec, plotname,
-                  cbar=False):
-    """Plot heatmaps of correlation of svd components and covariates."""
-    hfull = np.sum(cv_hratio)
-    w = 2.5 * len(svec) / 20 + 1.5 + 0.8 * cbar
-    h = 1 * hfull / 6 + 0.1 * len(cvlist)
-    fig, axs = plt.subplots(len(cv_mats), 1, figsize=(w, h),
-                            gridspec_kw={
-                                "height_ratios": cv_hratio,
-                                "left": 1.5 / w,
-                                "right": 0.99 - 0.8 / w * cbar,
-                                "top": 1 - 0.1 / h,
-                                "bottom": 0.4 / h})
-    # Add heatmaps:
-    sfact = np.max(svec) / svec
-    for i, covar in enumerate(cvlist):
-        cmat = cv_mats[covar].T
-        cmat = cmat * sfact[np.newaxis, :]
-        sns.heatmap(cmat,
-                    yticklabels=cv_ticks[covar],
-                    xticklabels=(i == len(cvlist) - 1),
-                    cmap="RdBu", ax=axs[i], cbar=cbar, center=0)
-        axs[i].set_ylabel(covar, fontsize=12, rotation=0,
-                          ha="right", va="center")
-    # Save figure:
-    plt.tight_layout()
-    plt.savefig(plotname)
-    plt.close()
-    logging.info("Plotted graph to " + plotname)
+
+# TODO: Plot a single module, several, or all modules:
+def plot_umap_grid(obj, graph_id, attr='leiden', plotname=None,
+                    ind=None, sel=None, width=2, s=0.5):
+    if plotname is None:
+        plotname = obj.imgdir + "module_umap_grid_" + \
+            obj.csuff + "_" + graph_id + ".png"
+    # Plot umap grid:
+    _plot_umap_grid(umat=obj.adata.obsm["X_umap"],
+                    scores=obj.graphs[graph_id].scores[attr],
+                    titles=obj.graphs[graph_id].mnames[attr],
+                    plotname=plotname,
+                    ind=ind, sel=sel, width=width, s=s)
+
