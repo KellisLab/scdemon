@@ -14,4 +14,3 @@ class ProgressManager:
 
 def _interrupt_checker():
     pass
-            

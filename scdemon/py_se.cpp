@@ -24,9 +24,11 @@ Eigen::SparseMatrix<double> py_robust_se(const py::EigenDRef<Eigen::MatrixXd> &X
 }
 
 Eigen::MatrixXd py_ols_beta(const py::EigenDRef<Eigen::MatrixXd> &X,
-                            const py::EigenDRef<Eigen::MatrixXd> &Y)
+                            const py::EigenDRef<Eigen::MatrixXd> &Y,
+                            double lambda
+                            )
 {
-        return ols_beta(X, Y);
+        return ols_beta(X, Y, lambda);
 }
 
 Eigen::MatrixXd py_ols_resid(const py::EigenDRef<Eigen::MatrixXd> &X,
@@ -38,7 +40,7 @@ Eigen::MatrixXd py_ols_resid(const py::EigenDRef<Eigen::MatrixXd> &X,
 
 PYBIND11_MODULE(_core, m) {
 	m.def("py_ols_beta", &py_ols_beta);
-        m.def("py_ols_resid", &py_ols_resid);
+    m.def("py_ols_resid", &py_ols_resid);
 	m.def("py_robust_se_X", &py_robust_se_X);
 	m.def("py_robust_se", &py_robust_se);
 	// <Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd>);
