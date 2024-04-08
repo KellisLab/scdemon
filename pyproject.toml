@@ -1,6 +1,7 @@
 [build-system]
 requires = ["scikit-build-core>=0.3.3", "pybind11"] 
 build-backend = "scikit_build_core.build"
+# build-backend = "setuptools.build_meta"
 
 [project]
 name = "scdemon"
@@ -10,7 +11,18 @@ authors = [{name = "Benjamin James", email = "benjames@mit.edu"},
            {name = "Carles Boix", email = "cboix@mit.edu"}]
 license = {file = "LICENSE"}
 requires-python = ">=3.7"
-dependencies = ["numpy", "pandas", "scipy", "tqdm", "igraph", "umap-learn", "leidenalg", "scikit-learn"]
+dependencies = [
+    "numpy", "pandas",
+    "scipy", "tqdm",
+    "igraph", "umap-learn",
+    "leidenalg", "scikit-learn",
+    # Added from original modules, can prune:
+    "scanpy", "anndata",
+    "seaborn", "matplotlib",
+    "fbpca", "gprofiler-official",
+    "python-igraph", "adjustText",
+    "numba"
+]
 
 [project.urls]
 Documentation = "https://scdemon.readthedocs.io/"

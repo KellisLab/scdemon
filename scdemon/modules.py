@@ -563,19 +563,3 @@ class scmodule(object):
         self.__dict__.update(state)
         # Restore the adata with the h5ad_file handle:
         self.adata = sc.read(self.h5ad_file)
-
-    # DONE: Fixed graph layout (nogrid works)
-    # DONE: Enrichments on graph / other attributes on graph
-    # DONE: P-values on corr for cutoff
-    # DONE: Quantiles for corr. cutoff
-    # DONE: Expr percent dpdt. cutoffs
-    # DONE: Writing module list
-    # TODO: Saving enrichments so we don't recompute them
-    # TODO: Heatmap for the enrichments (make profiles, pass to scanpy dotplot)
-    # TODO: Compute gene properties
-    # TODO: Plot umap with any coloring (gene properties)
-    # TODO: Handle both X and adata
-    # TODO: Plot multiple graphs from the same adata
-    # TODO: Better docstrings
-    # TODO: Plot multiple graphs on the same layout (for subsetting!)
-    # TODO: CELL STATE DISCOVERY + ANNOTATION FROM GENE EXPRESSION MODULES.
