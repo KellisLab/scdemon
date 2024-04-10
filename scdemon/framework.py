@@ -132,6 +132,10 @@ class modules(object):
         # Initialize with the random seed
         np.random.seed(self.seed)
 
+    # TODO: Split fixed vs. repeated tasks (for multiple graphs)
+
+    # Part I. Setup data > PCs > correlation estimate
+    # -----------------------------------------------
     # TODO: Allow options:
     # TODO: Possibly separate into setup + calculate correlation,
     # so can we can run in multiple times, make multiple graphs
@@ -142,17 +146,8 @@ class modules(object):
         self._calculate_PCA() # 2. perform SVD or get pre-computed SVD
         self._select_PCs() # 2a. filter components
         self._adjust_PCs() # 3. PC adjustment # TODO: Put before or after 2a?
-        self._calculate_correlation() # 4. Estimate correlation
-
-    def build_graph(self):
-        pass
-
-    # Building adjacency > graph > modules
-    # 5. Build adjacency matrix
-    # 6. Filter k-NN (thresholding)
-    # 7. Perform community detection (NMF, BigClam, Leiden)
-    # 8. Downstream tasks
-    # 9. Benchmarking
+        # 4. Estimate correlation:
+        self._calculate_correlation(indices=self.selected_PCs)
 
     # NOTE: Filter in place on modules object
     def _filter_by_genes(self):
@@ -210,14 +205,12 @@ class modules(object):
         else:
             self.selected_PCs = None if self.keep_first_PC else \
                 np.arange(1, self.U.shape[1])
-        # logging.debug(self.selected_PCs)
 
     def _calculate_covariate_svd_correlation(self):
         """Calculate the correlation of covariates with PCs."""
         self.cv_mats = calculate_svd_covar_corr(
             self.U.T, self.adata.obs, self.cvlist, cv_mats=self.cv_mats)
 
-    # TODO: rename.
     def _assign_covariates_to_PCs(self, invert=False):
         """Calculate which components are correlated with each covariate."""
         self.calc_svd_corr([covar])
@@ -258,7 +251,7 @@ class modules(object):
                     self.cv_ticks[covar] = False
 
     # TODO: put the majority of the correlation function into an import
-    def _calculate_correlation(self, center=False, power=0):
+    def _calculate_correlation(self, indices=None, center=False, power=0):
         """
         Calculate the correlation between the genes.
         ---
@@ -267,13 +260,13 @@ class modules(object):
         """
         # Correlation:
         # TODO: Should both corr be named the same?
-        if self.corr_raw is None and self.calc_raw:
+        if self.calc_raw:
             # Raw correlation, centered or not:
-            self.corr_raw = calculate_correlation(self.adata.X, center=center)
+            self.corr = calculate_correlation(self.adata.X, center=center)
         else:
             # Estimate correlation, with a subset of PCs:
-            self.corr_est = calculate_correlation_estimate(
-                self.U, self.s, self.V, power=power, indices=self.selected_PCs)
+            self.corr = calculate_correlation_estimate(
+                self.U, self.s, self.V, power=power, indices=indices)
         # Get SD estimate:
         self._calculate_correlation_estimate_sd()
 
@@ -281,133 +274,49 @@ class modules(object):
         # Estimate the std. deviation of the transformed correlation estimate
         # TODO: Remove long-term and replace with bootstraps over batches
         if self.estimate_sd:
-            self.corr_mean, self.corr_sd = calculate_correlation_estimate_sd(
+            _, self.corr_sd = calculate_correlation_estimate_sd(
                 self.U, self.s, self.V, nperm=50, seed=self.seed)
         else:
-            self.corr_mean, self.corr_sd = None, None
+            _, self.corr_sd = None, None
 
 
-    # Functions for graph object, after correlation is calculated:
-    # ------------------------------------------------------------
-
-    # TODO: Simplify inheritance of kwargs params:
-    def _make_graph_object(self, graph_id, corr,
-                           graph=None, corr_sd=None,
-                           cutoff=None, edge_weight=None,
-                           knn_k=None, scale=None,
-                           z=None, degree_cutoff=0,
-                           min_size=4, use_zscore=True,
-                           layout_method="fr"):
-        if z is not None:
-            self.z = z
-        self.graphs[graph_id] = gene_graph(
-            corr,
-            genes=self.genes,
-            graph=graph,
-            corr_sd=corr_sd,
-            cutoff=cutoff,
-            use_zscore=use_zscore,
-            edge_weight=edge_weight,
-            margin=self.margin,
-            layout_method=layout_method,
-            knn_k=knn_k,
-            z=self.z,
-            scale=scale,
-            min_size=min_size,
-            degree_cutoff=degree_cutoff)
-
-
-    # Make a merged graph from multiple decorrelation resolutions:
-    # NOTE: Performs better than each graph singly at calling modules
-    # TODO: Figure out how to merge...
-    # TODO: Assign modules later should be using z-scores
-    # TODO: If given new z-score, re-threshold all graphs
-    def make_merged_graph(self,
-                          graph_id,
-                          power_list=[0, .25, .5, .75, 1],
-                          resolution=2,
-                          keep_all_z=False,
-                          **kwargs):
-        """Make a merged graph from a list of many parameters."""
-        # Make the full list of graphs at each power:
-        # TODO: Move make_graphlist into modules?
-        graphlist, graphs = make_graphlist(self, plist=power_list,
-                                           keep_all_z=keep_all_z)
-        # Multiplex cluster the graphs:
-        membership = partition_graphlist(graphlist, resolution=resolution)
-        # Calculate the average correlation:
-        # TODO: Corr is correlation if not loaded as zcutoff.....!
-        # NOTE: Extended assignment is always better with zcutoff
-        # TODO: Standardize graph: use cutoff to put matrix -> zmat directly
-        corr = self.graphs[graphs[0]].corr
-        for graph in graphs[1:]:
-            # Scale graphs appropriately:
-            maxval = np.max(np.abs(self.graphs[graph].corr))
-            corr += (self.graphs[graph].corr / maxval)
-        corr = corr / (len(graphs) * 1.0)
-
-        # Make the graph object with the pre-computed graph:
-        # NOTE: Not good! but otherwise igraph prints a huge message...
-        with contextlib.redirect_stdout(None):
-            graph = igraph.union(graphlist)
-        graph = graph.simplify(combine_edges="max")  # Merge edges
-        self._make_graph_object(
-            graph_id, corr=corr, graph=graph, **kwargs)
-        self.graphs[graph_id].kept_genes = graph.vs['name']
-
-        # Turn multiplex partition into modules (reorder due to merge):
-        gn = np.array(graphlist[0].vs['name'])
-        reord = np.array([np.where(gn == x)[0][0] for x in graph.vs['name']])
-        # gn[reord] == graph.vs['name']  # If we want to check correct.
-        membership = np.array(membership)[reord]
-        ptns = np.unique(membership)
-        partition = [np.where(membership == x)[0] for x in ptns]
-        self.graphs[graph_id].get_modules_from_partition(partition, 'leiden')
-
-        # Layout the merged graph:
-        self.graphs[graph_id].layout_graph()
-        # Populate modules??
-        self.graphs[graph_id].populate_modules(self.adata, attr='leiden')
-        self.graphs[graph_id].match_genes_to_modules(attr='leiden')
-
-
-
-
+    # Part II. Functions for graph object, after correlation is calculated:
+    # ---------------------------------------------------------------------
+    # Building adjacency > graph > modules
+    # Make graph object > construct_graph does all of these:
+    # 5. Build adjacency matrix
+    # 6. Filter k-NN (thresholding) > adjacency
+    # 6a. Make graph
+    # 7. Perform community detection (NMF, BigClam, Leiden)
+    # 7a. Layout graph
+    # 8. Downstream tasks
+    # 9. Benchmarking
+    def make_graph(self, graph_id, multigraph=False, **kwargs):
+        if multigraph:
+            self._make_merged_graph(graph_id,
+                                    **kwargs)
+            pass
+        else:
+            self._make_single_graph(graph_id, corr=self.corr, **kwargs)
 
     # Build the graph object and store in dictionary:
-    # TODO: Clarify the hierarchy of options - merge use_zscore and z and
-    # cutoff if necessary.
-    def make_graph(self,
-                   graph_id,
-                   corr=None,
-                   corr_sd=None,
-                   power=0,
-                   resolution=2,
-                   layout=True,
-                   adjacency_only=False,
-                   full_graph_only=False,
-                   keep_all_z=True,
-                   **kwargs):
-        # For debugging purposes (testing power, if recomputing, etc.)
-        self.corr_est, self.corr_raw = self.cobj.get_correlation(power=power)
-        # Set parameters + correlations:
-        # TODO: Check kwargs passed properly (corr, corr_sd?)
-        if corr is None:
-            if graph_id == "raw":
-                if self.corr_raw is None:
-                    self.corr_raw = self.cobj.get_raw_correlation(force=True)
-                usecorr = self.corr_raw
-                usesd = None
-            else:
-                usecorr = self.corr_est
-                usesd = self.corr_sd
-        else:
-            usecorr = corr
-            usesd = corr_sd
-        # TODO: Simplify inheritance of kwargs params:
+    # TODO: Clarify the hierarchy of options -
+    # merge use_zscore and z and cutoff if necessary.
+    # TODO: Simplify inheritance of kwargs params:
+    def _make_single_graph(self,
+                           graph_id,
+                           corr=None,
+                           corr_sd=None,
+                           power=0,
+                           resolution=2,
+                           layout=True,
+                           adjacency_only=False,
+                           full_graph_only=False,
+                           keep_all_z=True,
+                           **kwargs):
         # Make the actual graph object:
-        self._make_graph_object(
-            graph_id, corr=usecorr, corr_sd=usesd, **kwargs)
+        self._make_single_graph_object(graph_id, corr=corr, corr_sd=usesd, **kwargs)
+
         # Process graph:
         if adjacency_only:
             # Only compute adjacency, for bootstraps
@@ -423,6 +332,102 @@ class modules(object):
             self.graphs[graph_id].populate_modules(self.adata, attr='leiden')
             self.graphs[graph_id].match_genes_to_modules(attr='leiden')
 
+    # TODO: Simplify inheritance of kwargs params:
+    def _make_single_graph_object(self, graph_id, corr,
+                           graph=None, corr_sd=None,
+                           cutoff=None, edge_weight=None,
+                           knn_k=None, scale=None,
+                           z=None, degree_cutoff=0,
+                           min_size=4, use_zscore=True,
+                           layout_method="fr"):
+        if z is not None:
+            self.z = z
+        self.graphs[graph_id] = gene_graph(
+            corr,
+            graph=graph,
+            corr_sd=corr_sd,
+            genes=self.genes,
+            cutoff=cutoff,
+            use_zscore=use_zscore,
+            edge_weight=edge_weight,
+            margin=self.margin,
+            layout_method=layout_method,
+            knn_k=knn_k,
+            z=self.z,
+            scale=scale,
+            min_size=min_size,
+            degree_cutoff=degree_cutoff)
+
+    # Make a merged graph from multiple decorrelation resolutions:
+    # TODO: Assign modules later should be using z-scores
+    # TODO: If given new z-score, re-threshold all graphs
+    def _make_merged_graph(self, graph_id,
+                          power_list=[0, .25, .5, .75, 1],
+                          resolution=2,
+                          keep_all_z=False,
+                          **kwargs):
+        """Make a merged graph from a list of many parameters."""
+        # Make the full list of graphs at each power:
+        # TODO: Move make_graphlist into modules?
+        graphlist, graphs = make_graphlist( # TODO fix, with changes to graphs
+            self, plist=power_list, keep_all_z=keep_all_z)
+        # Multiplex cluster the graphs:
+        membership = partition_graphlist(graphlist, resolution=resolution)
+        # Calculate the average correlation:
+        corr = self._get_average_correlation(graphs)
+        # Make the graph object from the union of these graphs:
+        self._make_merged_graph_object(
+            graph_id, graphlist, corr=corr, **kwargs)
+
+    def _get_average_correlation(self, graphs)
+        # TODO: Corr is correlation if not loaded as zcutoff.....!
+        # NOTE: Extended assignment is always better with zcutoff
+        # TODO: Standardize graph: use cutoff to put matrix -> zmat directly
+        corr = self.graphs[graphs[0]].corr
+        for graph in graphs[1:]:
+            # Scale graphs appropriately:
+            maxval = np.max(np.abs(self.graphs[graph].corr))
+            corr += (self.graphs[graph].corr / maxval)
+        corr = corr / (len(graphs) * 1.0)
+        return(corr)
+
+    def _make_merged_graph_object(self, graph_id, graphlist, corr,
+                                  **kwargs):
+        # 1. Combine all of the graphs together:
+        graph = self._combine_graphlist(graph_id, graphlist, corr, **kwargs)
+        # 2. Partition to modules
+        self._partition_multigraph(graph_id, graph, graphlist)
+        # 3. Layout the merged graph:
+        self.graphs[graph_id].layout_graph()
+        # 4. Populate modules with all genes:
+        self.graphs[graph_id].populate_modules(self.adata, attr='leiden')
+        self.graphs[graph_id].match_genes_to_modules(attr='leiden')
+
+    def _combine_graphlist(self, graph_id, graphlist, corr, **kwargs):
+        """Combine all of the graphs in a list of graphs."""
+        # NOTE: Not good! but otherwise igraph prints a huge message.
+        with contextlib.redirect_stdout(None):
+            # Union and simplify to merge edges
+            graph = igraph.union(graphlist)
+            graph = graph.simplify(combine_edges="max")
+
+        # Construct the internal graph object for the merged graph:
+        self._make_single_graph_object(
+            graph_id, corr=corr, graph=graph, **kwargs)
+        self.graphs[graph_id].kept_genes = graph.vs['name']
+        return(graph)
+
+    # TODO: Could most of this construction into graph object instead
+    def _partition_multigraph(self, graph_id, graph, graphlist):
+        # Turn multiplex partition into modules
+        # NOTE: Must reorder due to different order in the merge:
+        gn = np.array(graphlist[0].vs['name'])
+        reord = np.array([np.where(gn == x)[0][0] for x in graph.vs['name']])
+        # gn[reord] == graph.vs['name']  # If we want to check correct.
+        membership = np.array(membership)[reord]
+        ptns = np.unique(membership)
+        partition = [np.where(membership == x)[0] for x in ptns]
+        self.graphs[graph_id].get_modules_from_partition(partition, 'leiden')
 
     def get_k_stats(self, k_list, power=0, resolution=None, **kwargs):
         """Get statistics on # genes and # modules for each k setting."""
@@ -432,9 +437,9 @@ class modules(object):
             ind = np.arange(k)
             graph_id = 'test_k' + str(k)
             # Build the graph - don't layout, but get modules:
-            corr_subset = self.cobj.get_correlation_subset(ind, power=power)
+            corr_subset = self._calculate_correlation(indices=ind, power=power)
             try:
-                self._make_graph_object(graph_id, corr=corr_subset, **kwargs)
+                self._make_single_graph_object(graph_id, corr=corr_subset, **kwargs)
                 self.graphs[graph_id].construct_graph(
                     resolution=resolution, layout=False)
                 # Store number of genes and modules:
@@ -451,9 +456,10 @@ class modules(object):
         return(ngenes, nmodules)
 
 
-    # TODO: Put utilities for graph object, somewhere more reasonable
+    # Utilities for working directly on a specific graph, maybe not necessary
+    # -----------------------------------------------------------------------
     def recluster_graph(self, graph_id, resolution=None):
-        """Re-cluster graph with different resolution."""
+        """Re-cluster a graph with a different resolution."""
         # TODO: Allow multiple modules at different resolution
         self.graphs[graph_id].calculate_gene_modules(resolution=resolution)
 
@@ -473,7 +479,6 @@ class modules(object):
         out = self.graphs[graph_id].find_gene(gene, print_genes=print_genes)
         if return_genes:
             return out
-
 
 
 def calculate_margin_genes(X):

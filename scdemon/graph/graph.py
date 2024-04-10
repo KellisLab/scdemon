@@ -39,7 +39,7 @@ class gene_graph(object):
         self.genes = genes
         self.graph = graph  # For giving pre-computed graph
 
-        # Adjacency matrix processing object:
+        # Setup the adjacency matrix processing object:
         self.adj = adjacency_matrix(
             self.corr,
             corr_sd=corr_sd,
@@ -72,17 +72,24 @@ class gene_graph(object):
         self.scores = {}
         self.module_match = {}
 
+    # TODO: put options for different methods here
     # TODO: Rename method (main processing not just build graph)
     def construct_graph(self, resolution=2, layout=True, method='leiden'):
         """Construct the graph object and find gene modules."""
+        # Building adjacency > graph > modules, handled by graph object:
         if self.graph is None:
+            # 5. Build adjacency matrix
             self.adjacency, self.kept_genes, self.ind = \
                 self.adj.get_adjacency()
+            # 6. Create k-NN (thresholding) from adjacency
             self._make_graph_object()
+            # 7. Perform community detection (NMF, BigClam, Leiden)
             self.calculate_gene_modules(resolution=resolution)
         if layout:
+            # 7a. Layout graph
             self.layout_graph(layout_method=self.layout_method)
 
+    # TODO: collapse into same method?
     def construct_full_graph(self, keep_all_z=True):
         """Construct the full adjacency graph for multiplexing purposes."""
         if self.graph is None:
@@ -94,7 +101,9 @@ class gene_graph(object):
             # Create a graph with no pruning at all:
             self._make_graph_object(prune_nodes=False, prune_components=False)
 
+
     # TODO: Decide if arguments feed in or keep everything in self.
+    # TODO: rename, graph object is confusing given this is the graph object
     def _make_graph_object(self, prune_nodes=True, prune_components=True):
         """Make graph object from adjacency."""
         logging.info("Making graph object from adjacency.")
@@ -175,6 +184,7 @@ class gene_graph(object):
             self.graph, partition_type, **partition_kwargs)
         return(partition)
 
+    # TODO: put modules calculations into separate utils file
     def get_modules_from_partition(self, partition, method):
         # Initialize and assign each node to a cluster:
         self.assign[method] = (np.zeros(len(self.graph.vs)) - 1).astype(int)

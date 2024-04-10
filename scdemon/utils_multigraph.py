@@ -9,7 +9,10 @@ def compute_graphs(mod, plist, keep_all_z=True):
     for power in plist:
         graph_id = f'p{power}'
         if graph_id not in mod.graphs.keys():
-            mod.make_graph(graph_id, full_graph_only=True, power=power,
+            # TODO: correlation from power
+            mod.make_graph(graph_id,
+                           full_graph_only=True,
+                           power=power,
                            keep_all_z=keep_all_z)
     return(['p' + str(x) for x in plist])
 
