@@ -3,7 +3,15 @@
 
 # Internal:
 from .graph import gene_graph
-from .correlation import correlation
+# from .correlation import correlation
+from .correlation import (
+    calculate_correlation,
+    calculate_correlation_estimate,
+    calculate_correlation_estimate_sd
+)
+
+
+
 from .auxiliary import calculate_svd_covar_corr
 from .utils_multigraph import make_graphlist, partition_graphlist
 
@@ -81,6 +89,7 @@ class modules(object):
                  filter_expr=None,
                  svd_k=100, # TODO: change to k, change example code to match
                  calc_raw=False,
+                 keep_first_PC=False,
                  use_fbpca=True
                  cv_cutoff=0.4,
                  # Arguments for graph:
@@ -108,6 +117,7 @@ class modules(object):
         self.use_fbpca = use_fbpca
         self.seed = seed
         self.calc_raw = calc_raw
+        self.keep_first_PC = keep_first_PC
         self.estimate_sd = estimate_sd
         self.cv_cutoff = cv_cutoff
 
@@ -186,7 +196,6 @@ class modules(object):
                 self.s = self.adata.uns["pca"]["variance"]
                 self.V = self.adata.varm["PCs"].T
 
-    # TODO: Make this optional
     def _select_PCs(self):
         if self.filter_covariate is not None:
             self._calculate_covariate_svd_correlation()
@@ -195,7 +204,13 @@ class modules(object):
             # Select SVD components to keep
             # TODO: allow multiple components (e.g. celltype + region)
             covar = self.filter_covariate[covar]
-            self.kept_ind = self.cv_pc_ind[covar]
+            self.selected_PCs = self.cv_pc_ind[covar]
+            if not self.keep_first_PC:
+                self.selected_PCs = self.selected_PCs[self.selected_PCs != 0]
+        else:
+            self.selected_PCs = None if self.keep_first_PC else \
+                np.arange(1, self.U.shape[1])
+        # logging.debug(self.selected_PCs)
 
     def _calculate_covariate_svd_correlation(self):
         """Calculate the correlation of covariates with PCs."""
@@ -242,34 +257,38 @@ class modules(object):
                     self.cv_lengths[covar] = 1
                     self.cv_ticks[covar] = False
 
-    def _calculate_correlation(self, center=False):
-        # Create correlation object:
-        # TODO: Change to allow centering if > set size or already dense
-        self.cobj = correlation(X=self.adata.X,
-                                margin=self.margin,
-                                U=U, s=s, V=V,
-                                k=self.svd_k,
-                                calc_raw=self.calc_raw,
-                                center=center)
+    # TODO: put the majority of the correlation function into an import
+    def _calculate_correlation(self, center=False, power=0):
+        """
+        Calculate the correlation between the genes.
+        ---
+        Calculates either raw or estimated, using the SVD and selected PCs.
+        Also estimates the SD for the estimated correlation by bootstrap
+        """
+        # Correlation:
+        # TODO: Should both corr be named the same?
+        if self.corr_raw is None and self.calc_raw:
+            # Raw correlation, centered or not:
+            self.corr_raw = calculate_correlation(self.adata.X, center=center)
+        else:
+            # Estimate correlation, with a subset of PCs:
+            self.corr_est = calculate_correlation_estimate(
+                self.U, self.s, self.V, power=power, indices=self.selected_PCs)
+        # Get SD estimate:
+        self._calculate_correlation_estimate_sd()
 
-        # Calculate correlation:
-
-        # TODO: remove getting raw correlation if not necessary
-        self.corr_est, self.corr_raw = self.cobj.get_correlation()
-
-        # TODO: remove this
+    def _calculate_correlation_estimate_sd(self):
         # Estimate the std. deviation of the transformed correlation estimate
+        # TODO: Remove long-term and replace with bootstraps over batches
         if self.estimate_sd:
-            self.corr_mean, self.corr_sd = self.cobj.estimate_corr_sd(
-                nperm=50)
+            self.corr_mean, self.corr_sd = calculate_correlation_estimate_sd(
+                self.U, self.s, self.V, nperm=50, seed=self.seed)
         else:
             self.corr_mean, self.corr_sd = None, None
 
-        # If subset instead:
-        if self.filter_covariate is not None:
-            # corr_subset = self.cobj.get_correlation_subset(k_ind, power=power)
 
-
+    # Functions for graph object, after correlation is calculated:
+    # ------------------------------------------------------------
 
     # TODO: Simplify inheritance of kwargs params:
     def _make_graph_object(self, graph_id, corr,
@@ -296,6 +315,7 @@ class modules(object):
             scale=scale,
             min_size=min_size,
             degree_cutoff=degree_cutoff)
+
 
     # Make a merged graph from multiple decorrelation resolutions:
     # NOTE: Performs better than each graph singly at calling modules
@@ -350,6 +370,10 @@ class modules(object):
         self.graphs[graph_id].populate_modules(self.adata, attr='leiden')
         self.graphs[graph_id].match_genes_to_modules(attr='leiden')
 
+
+
+
+
     # Build the graph object and store in dictionary:
     # TODO: Clarify the hierarchy of options - merge use_zscore and z and
     # cutoff if necessary.
@@ -398,12 +422,6 @@ class modules(object):
                 resolution=resolution, layout=layout)
             self.graphs[graph_id].populate_modules(self.adata, attr='leiden')
             self.graphs[graph_id].match_genes_to_modules(attr='leiden')
-
-    def make_svd_subset_graph(self, graph_id, k_ind, power=0, **kwargs):
-        """Make a graph from a subset of SVD dims."""
-        # Make corr matrix:
-        corr_subset = self.cobj.get_correlation_subset(k_ind, power=power)
-        self.make_graph(graph_id, corr=corr_subset, **kwargs)
 
 
     def get_k_stats(self, k_list, power=0, resolution=None, **kwargs):

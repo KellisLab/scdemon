@@ -97,27 +97,3 @@ def calculate_correlation_estimate_sd(U, s, V, nperm=25, seed=1):
     del(corr_est, full_ind)
     return (corr_mean, corr_sd)
 
-
-def search_FDR_cutoff(t_ij, P, alpha=0.01):
-    """Grid search for an FDR cutoff given estimated test statistics."""
-    vec = triu_mask(t_ij)  # Upper triangular matrix as vector
-    # Valid search space (for which t_ij ~ N(0,1))
-    ap = 2 * np.log(np.log(P))
-    bp = np.sqrt(4 * np.log(P) - ap)
-    res = 0.1
-    t = np.array(list(np.arange(2, bp, res)) + [bp])
-
-    def grid_FDR_cutoff(vec, t, alpha):
-        est_null = (2 - 2 * norm.cdf(t)) * len(vec)
-        sig = np.array([np.sum(vec > x) for x in t])
-        efdr = est_null / sig
-        t_ind = np.where(efdr < alpha)[0][0]
-        return(t_ind, t[t_ind - 1], t[t_ind])
-
-    # Run a hierarchical grid search:
-    while res >= 0.01:
-        t_ind, t_low, t_high = grid_FDR_cutoff(vec, t, alpha)
-        res = res * 0.1
-        t = np.arange(t_low, t_high, res)
-
-    return(t_high)
