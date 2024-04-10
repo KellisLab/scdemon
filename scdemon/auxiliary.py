@@ -1,5 +1,5 @@
 #!/usr/bin/python
-"""Auxiliary functions for correlation"""
+"""Auxiliary functions for correlation between covariates and PCs"""
 import numpy as np
 import pandas as pd
 import logging
@@ -16,26 +16,29 @@ def vcorrcoef(X, y):
     return r
 
 
-def calculate_svd_covar_corr(ut, obsdf, cvlist, cv_mats={}):
+def calculate_svd_covar_corr(ut, obsdf, cvlist, cv_mats={}, force_run=False):
     """Calculate covariate correlations with SVD."""
     for covar in cvlist:
-        cvcol = obsdf[covar]
-        if cvcol.dtype.name == "category":
-            covar_dummy = pd.get_dummies(cvcol)
-            cv_mats[covar] = np.zeros(
-                (ut.shape[0], covar_dummy.shape[1]))
-            for i, cv_lvl in enumerate(covar_dummy.columns):
-                cv_mats[covar][:, i] = vcorrcoef(
-                    ut, covar_dummy[cv_lvl].to_numpy().T)
-        else:
-            cvcol = cvcol.to_numpy()
-            if np.sum(np.isnan(cvcol)) > 0:
-                ind = np.where((1 - np.isnan(cvcol)) == 1)[0]
-                cv_mats[covar] = vcorrcoef(
-                    ut[:, ind], cvcol[ind, np.newaxis].T
-                )[:, np.newaxis]
-            else:
-                cv_mats[covar] = vcorrcoef(
-                    ut, cvcol[:, np.newaxis].T)[:, np.newaxis]
+        if covar not in cv_mats.keys() or force_run:
+            cvcol = obsdf[covar]
+            cv_mats[covar] = calculate_svd_covar_corr_single(ut, cvcol)
     return(cv_mats)
+
+
+def calculate_svd_covar_corr_single(ut, cvcol):
+    if cvcol.dtype.name == "category":
+        covar_dummy = pd.get_dummies(cvcol)
+        corr = np.zeros((ut.shape[0], covar_dummy.shape[1]))
+        for i, cv_lvl in enumerate(covar_dummy.columns):
+            corr[:, i] = vcorrcoef(ut, covar_dummy[cv_lvl].to_numpy().T)
+    else:
+        cvcol = cvcol.to_numpy()
+        if np.sum(np.isnan(cvcol)) > 0:
+            ind = np.where((1 - np.isnan(cvcol)) == 1)[0]
+            corr = vcorrcoef(
+                ut[:, ind], cvcol[ind, np.newaxis].T
+            )[:, np.newaxis]
+        else:
+            corr = vcorrcoef(ut, cvcol[:, np.newaxis].T)[:, np.newaxis]
+    return(corr)
 

@@ -14,7 +14,6 @@ from .utils_correlation import (
 import logging
 import numpy as np
 import pandas as pd
-import fbpca
 from scipy import sparse
 
 # For adjustments
@@ -42,10 +41,10 @@ class correlation(object):
             Obtain the correlation matrix for a subset of SVD components
     """
 
-    def __init__(self, X, margin, U=None, s=None, V=None,
+    def __init__(self, X, margin, U, s, V,
                  k=100, calc_raw=False, center=False, mean=None):
         """Initialize correlation handling object."""
-        # Input:
+        # Input, required (calculated PCA outside of this)
         self.X = X
         self.margin = margin
         self.U = U
@@ -64,9 +63,6 @@ class correlation(object):
         self.use_v = True
         logging.debug("X: " + str(self.X.shape))
         logging.debug("Margin: " + str(self.margin.shape))
-
-    def setup(self):
-        self._calculate_pca()
 
     def get_correlation(self, keep_first=False, power=0):
         """Get correlation estimates from SVD and raw if calc_raw is True."""
@@ -93,7 +89,6 @@ class correlation(object):
 
     def _calculate_estimated_correlation(self, power=0, keep_first=False):
         self.power = power
-        self._calculate_pca()
         if self.use_v:
             # Keep or remove first component (defaults to removing):
             indices = None if keep_first else np.arange(1, self.U.shape[1])
@@ -106,21 +101,6 @@ class correlation(object):
             self._calculate_data_transformation()
             self.corr_est = calculate_correlation(
                 self.Xw, center=self.center)
-
-    def _check_pca(self):
-        # Check conditions for re-calculating PCA:
-        if self.U is None or self.s is None or \
-                self.V is None or self.U.shape[1] < self.k:
-            return False
-        else:
-            return True
-
-    def _calculate_pca(self):
-        """Calculate PCA if not computed already."""
-        if not self._check_pca():
-            logging.info("Calculating PCA of X with fbpca")
-            self.U, self.s, self.V = fbpca.pca(
-                self.X, k=self.k, raw=not self.center)
 
     def _calculate_data_transformation(self):
         """Calculate decorrelation transformation of X with SVD."""
@@ -227,15 +207,3 @@ class correlation(object):
         corr_mean, corr_sd = calculate_correlation_estimate_sd(
             self.U, self.s, self.V, nperm=nperm, seed=seed)
         return (corr_mean, corr_sd)
-
-    # TODO: Remove later; for comparison (X.T) with non-centered
-    def calculate_correlation_centered(self):
-        logging.info("Calculating covariance of ZCA transformed X")
-        logging.debug("Calculating PCA of X.T with fbpca")
-        self.Ucn, self.scn, self.Vcn = fbpca.pca(self.X.T, k=self.k, raw=False)
-        s = np.diag(1 / self.scn)
-        X = self.X.toarray()
-        self.X_zca = self.Vcn.dot(X)
-        self.X_zca = self.Vcn.T.dot(s).dot(self.X_zca)
-        self.corr_est = np.corrcoef(self.X_zca.T)
-        del(X)

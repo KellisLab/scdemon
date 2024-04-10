@@ -1,5 +1,5 @@
 #!/usr/bin/python
-"""Reduced class for computing modules on adata object."""
+"""[WORKING] Reduced class for computing modules on adata object."""
 
 # Internal:
 from .graph import gene_graph
@@ -11,13 +11,59 @@ import os
 import re
 import gc
 import logging
+import contextlib
+
+import fbpca
+import igraph
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_categorical_dtype
-import scanpy as sc  # TODO: Don't import if not using adata formulation
 from scipy import sparse
-import igraph
-import contextlib
+from pandas.api.types import is_categorical_dtype
+
+import scanpy as sc
+from anndata import AnnData
+
+
+# Removed options
+# csuff,
+# imgdir=None,
+# h5ad_file=None,  # File corresponding to adata (for saving)
+
+# TODO: standardize SVD vs. PCs nomenclature
+
+def run_modules(
+    adata,
+    estimate_sd=False,
+    seed=1, # TODO: add fixed random seed on construction
+    filter_expr=None,
+    z=4,
+    svd_k=100,
+    calc_raw=False,
+    use_fbpca=True,
+):
+    """Run modules"""
+    # TODO: Farm out instances:
+    if type(obj) is AnnData:
+        # Create modules object differently depending on object.
+        mod = modules(adata,
+                      csuff=csuff,
+                      estimate_sd=estimate_sd,
+                      seed=seed,
+                      filter_expr=filter_expr,
+                      z=z,
+                      svd_k=svd_k,
+                      calc_raw=calc_raw
+                      use_fbpca=use_fbpca)
+    else:
+        # NOTE: If no anndata, where do pieces go?
+        pass
+    mod.setup()  # Setup the object
+    # TODO: how to handle different graphs?
+    graph_id = "base"
+    # clustering resolution to main call
+    mod.make_graph(graph_id, resolution=2.5)
+    # TODO: Enable this to work with / without an adata object
+    # Maybe two parts - one is setup > correlation, second is make_graph >  modules
 
 
 class modules(object):
@@ -27,106 +73,203 @@ class modules(object):
 
     def __init__(self,
                  adata,
-                 csuff,
-                 h5ad_file=None,  # File corresponding to adata (for saving)
-                 imgdir=None,
-                 estimate_sd=False,
+                 X=None, meta=None, # TODO: Add alternative if no adata.obs
+                 U=None, s=None, V=None, # If we want to pass these in
+
                  seed=1,
+                 estimate_sd=False,
                  filter_expr=None,
-                 z=4, svd_k=100,
+                 svd_k=100, # TODO: change to k, change example code to match
                  calc_raw=False,
-                 use_fbpca=True):
+                 use_fbpca=True
+                 cv_cutoff=0.4,
+                 # Arguments for graph:
+                 z=4,
+                 ):
         """Initialize gene modules object."""
         # TODO: implement stand-alone matrix
-        # Arguments:
+        # Dataset:
         self.adata = adata
-        self.h5ad_file = h5ad_file
-        self.genes = self.adata.var_names  # labels
-        self.csuff = csuff
-        self.z = z
-        self.svd_k = svd_k
+        self.X = X
+
+        # Reduction
+        self.U = U
+        self.s = s
+        self.V = V
+
+        # Metadata
+        self.meta = meta
+        self.cvlist = self.adata.obs.columns # TODO: use meta if using X
+        self.genes = self.adata.var_names  # labels, TODO different if X
+
+        # Arguments for setup steps (up to correlation estimate)
+        self.k = svd_k
         self.filter_expr = filter_expr
         self.use_fbpca = use_fbpca
-        self.estimate_sd = estimate_sd
         self.seed = seed
         self.calc_raw = calc_raw
-        # Directories:
-        if imgdir is not None:
-            self.imgdir = imgdir
-        else:
-            self.imgdir = "./"
+        self.estimate_sd = estimate_sd
+        self.cv_cutoff = cv_cutoff
+
+        # Arguments for graph building steps:
+        self.z = z
+
         # Additional metadata / files:
         self.graphs = {}  # Store computed graphs
-        self.cv_mats = {}
+        self.cv_mats = {} # For correlation of covariates vs. PCs
+        self.cv_pc_ind = {} # For filtering PCs by covariate
 
-    # TODO: Enable this to work with / without an adata object
+        # Initialize with the random seed
+        np.random.seed(self.seed)
+
+    # TODO: Allow options:
+    # TODO: Possibly separate into setup + calculate correlation,
+    # so can we can run in multiple times, make multiple graphs
     def setup(self):
-        """Set up standard graph."""
-        self._filter_data()
-        self._calculate_margin()
-        self._calculate_correlation()
+        """Set up the dataset and get the correlation estimate."""
+        # 1a. normalize (done outside of this)
+        self._filter_by_genes() # 1b. subset to genes above expr cutoff
+        self._calculate_PCA() # 2. perform SVD or get pre-computed SVD
+        self._select_PCs() # 2a. filter components
+        self._adjust_PCs() # 3. PC adjustment # TODO: Put before or after 2a?
+        self._calculate_correlation() # 4. Estimate correlation
 
-    def _filter_data(self):
-        # Filter to top expr:
+    def build_graph(self):
+        pass
+
+    # Building adjacency > graph > modules
+    # 5. Build adjacency matrix
+    # 6. Filter k-NN (thresholding)
+    # 7. Perform community detection (NMF, BigClam, Leiden)
+    # 8. Downstream tasks
+    # 9. Benchmarking
+
+    # NOTE: Filter in place on modules object
+    def _filter_by_genes(self):
+        """Filter dataset to genes expressed above a given % cutoff."""
+        self.margin = calculate_margin_genes(self.adata.X)
         if self.filter_expr is not None:
-            margin = np.mean(self.adata.X > 0, axis=0)
-            if sparse.issparse(self.adata.X):
-                margin = np.array(margin)[0]
-            filtgenes = self.adata.var_names[margin >= self.filter_expr]
+            above_cutoff = self.margin >= self.filter_expr
+            filtgenes = self.adata.var_names[above_cutoff]
+            self.margin = self.margin[above_cutoff]
             self.adata = self.adata[:, filtgenes]
             self.genes = self.adata.var_names
-            print(self.adata.shape)
+            logging.debug("Subset to %s genes." % len(self.genes))
 
-    def _calculate_margin(self):
-        # Calculate margin for filtering later.
-        self.margin = np.mean(self.adata.X > 0, axis=0).copy()
-        if sparse.issparse(self.adata.X):
-            self.margin = np.array(self.margin)[0]
-
-    def _calculate_correlation(self):
-        np.random.seed(self.seed)
-        if 'X_pca' in self.adata.obsm:
-            U = self.adata.obsm["X_pca"]  # TODO: FIX U for scanpy
-            s = self.adata.uns["pca"]["variance"]
-            V = self.adata.varm["PCs"].T
-            self.cobj = correlation(X=self.adata.X,
-                                    margin=self.margin,
-                                    U=U, s=s, V=V,
-                                    k=self.svd_k,
-                                    calc_raw=self.calc_raw)
-
-        elif self.use_fbpca:
-            # Allow handler to compute PCA with FBPCA library by not feeding in
-            # any matrices for U, s, or V
-            # TODO: Allow centering if under a certain size / not sparse
-            self.cobj = correlation(X=self.adata.X,
-                                    margin=self.margin,
-                                    k=self.svd_k,
-                                    calc_raw=self.calc_raw,
-                                    center=False)
+    def _check_PCA(self):
+        """Check conditions for re-calculating PCA."""
+        if self.U is None or self.s is None or \
+                self.V is None or self.U.shape[1] < self.k:
+            return False
         else:
-            # Compute PCA with scanpy options if not using FBPCA
-            if "X_pca" not in self.adata.obsm.keys():
-                logging.debug("Computing PCA through scanpy")
-                sc.tl.pca(self.adata, n_comps=self.k)
+            return True
 
-            U = self.adata.obsm["X_pca"]  # TODO: FIX U for scanpy
-            s = self.adata.uns["pca"]["variance"]
-            V = self.adata.varm["PCs"].T
-            self.cobj = correlation(X=self.adata.X,
-                                    margin=self.margin,
-                                    U=U, s=s, V=V,
-                                    k=self.svd_k,
-                                    calc_raw=self.calc_raw)
+    def _calculate_PCA(self):
+        """
+        Calculate PCA components U, s, V if they are not already computed.
+        ---
+        Defaults to X_pca in adata.obsm if available.
+        Otherwise uses fbpca or sc.tl.pca
+        """
+        if not self._check_PCA():
+            if self.use_fbpca and not 'X_pca' in self.adata.obsm:
+                # TODO: Check with Ben if other preferred PCA method
+                logging.info("Calculating PCA of X with fbpca")
+                self.U, self.s, self.V = fbpca.pca(
+                    self.X, k=self.k, raw=not self.center)
+            else:
+                # Compute PCA with scanpy options if not using fbpca
+                if "X_pca" not in self.adata.obsm.keys():
+                    logging.debug("Computing PCA through scanpy")
+                    sc.tl.pca(self.adata, n_comps=self.k)
+                self.U = self.adata.obsm["X_pca"]  # TODO: FIX U for scanpy
+                self.s = self.adata.uns["pca"]["variance"]
+                self.V = self.adata.varm["PCs"].T
 
-        # Setup and get the correlation objects
-        self.cobj.setup()  # Primarily to calculate PCA if not done yet
+    # TODO: Make this optional
+    def _select_PCs(self):
+        if self.filter_covariate is not None:
+            self._calculate_covariate_svd_correlation()
+            self._assign_covariates_to_PCs(invert=False)
+            self._calculate_covariate_lengths()  # For plotting, later
+            # Select SVD components to keep
+            # TODO: allow multiple components (e.g. celltype + region)
+            covar = self.filter_covariate[covar]
+            self.kept_ind = self.cv_pc_ind[covar]
+
+    def _calculate_covariate_svd_correlation(self):
+        """Calculate the correlation of covariates with PCs."""
+        self.cv_mats = calculate_svd_covar_corr(
+            self.U.T, self.adata.obs, self.cvlist, cv_mats=self.cv_mats)
+
+    # TODO: rename.
+    def _assign_covariates_to_PCs(self, invert=False):
+        """Calculate which components are correlated with each covariate."""
+        self.calc_svd_corr([covar])
+        for covar in self.cvlist:
+            cmat = self.cv_mats[covar].T
+            # TODO: fix this normalization issue
+            sfact = np.max(self.s) / self.s
+            cmat = cmat * sfact[np.newaxis, :]
+            cmx = np.max(np.abs(cmat), axis=0)
+            # Select indices for each covariate
+            if invert:
+                # Ones not strongly associated with the covariate
+                ind = np.where(cmx < self.cv_cutoff)[0]
+            else:
+                # Ones strongly associated with the covariate
+                ind = np.where(cmx >= self.cv_cutoff)[0]
+            self.cv_pc_ind[covar] = ind
+
+    # TODO: Add PC adjustment if necessary
+    def _adjust_PCs(self):
+        pass
+
+    # TODO: Auxiliary, try to move out of this object
+    def _calculate_covariate_lengths(self):
+        """Process covariates, for plotting avg heatmap and vs SVD."""
+        if not hasattr(self, 'cv_lengths'):
+            self.cv_lengths = {}
+            self.cv_ticks = {}
+        for covar in self.cvlist:
+            if covar not in self.cv_lengths.keys():
+                cvcol = self.adata.obs[covar]
+                if is_categorical_dtype(cvcol):
+                    covar_dummy = pd.get_dummies(cvcol)  # To match cv_mats
+                    self.cv_lengths[covar] = covar_dummy.shape[1]
+                    self.cv_ticks[covar] = covar_dummy.columns.tolist()
+                else:
+                    self.cv_lengths[covar] = 1
+                    self.cv_ticks[covar] = False
+
+    def _calculate_correlation(self, center=False):
+        # Create correlation object:
+        # TODO: Change to allow centering if > set size or already dense
+        self.cobj = correlation(X=self.adata.X,
+                                margin=self.margin,
+                                U=U, s=s, V=V,
+                                k=self.svd_k,
+                                calc_raw=self.calc_raw,
+                                center=center)
+
+        # Calculate correlation:
+
+        # TODO: remove getting raw correlation if not necessary
         self.corr_est, self.corr_raw = self.cobj.get_correlation()
+
+        # TODO: remove this
         # Estimate the std. deviation of the transformed correlation estimate
         if self.estimate_sd:
-            self.corr_mean, self.corr_sd = self.cobj.estimate_corr_sd(nperm=50)
+            self.corr_mean, self.corr_sd = self.cobj.estimate_corr_sd(
+                nperm=50)
         else:
             self.corr_mean, self.corr_sd = None, None
+
+        # If subset instead:
+        if self.filter_covariate is not None:
+            # corr_subset = self.cobj.get_correlation_subset(k_ind, power=power)
+
+
 
     # TODO: Simplify inheritance of kwargs params:
     def _make_graph_object(self, graph_id, corr,
@@ -262,27 +405,6 @@ class modules(object):
         corr_subset = self.cobj.get_correlation_subset(k_ind, power=power)
         self.make_graph(graph_id, corr=corr_subset, **kwargs)
 
-    def make_subset_graph(self,
-                          graph_id,
-                          covar,
-                          cv_cutoff=0.4,
-                          invert=False,
-                          **kwargs):
-        """Make a graph from a covariate-correlated subset of SVD dims."""
-        if not hasattr(self, "cv_mats") or covar not in self.cv_mats.keys():
-            self.calc_svd_corr([covar])
-        # TODO: allow multiple components (e.g. celltype + region)
-        cmat = self.cv_mats[covar].T
-        sfact = np.max(self.cobj.s) / self.cobj.s
-        cmat = cmat * sfact[np.newaxis, :]
-        cmx = np.max(np.abs(cmat), axis=0)
-        if invert:
-            k_ind = np.where(cmx < cv_cutoff)[0]
-        else:
-            k_ind = np.where(cmx >= cv_cutoff)[0]
-        nk = len(k_ind)
-        logging.info(f"Subsetting to {nk} components for covariate: {covar}")
-        self.make_svd_subset_graph(graph_id, k_ind=k_ind, **kwargs)
 
     def get_k_stats(self, k_list, power=0, resolution=None, **kwargs):
         """Get statistics on # genes and # modules for each k setting."""
@@ -310,6 +432,8 @@ class modules(object):
             logging.info(f"{k}: ngenes={ngenes} and nmodules={nmodules}")
         return(ngenes, nmodules)
 
+
+    # TODO: Put utilities for graph object, somewhere more reasonable
     def recluster_graph(self, graph_id, resolution=None):
         """Re-cluster graph with different resolution."""
         # TODO: Allow multiple modules at different resolution
@@ -332,61 +456,25 @@ class modules(object):
         if return_genes:
             return out
 
-    def _calculate_covariate_lengths(self):
-        if not hasattr(self, 'cv_lengths'):
-            self.cv_lengths = {}
-            self.cv_ticks = {}
-        cvlist = self.adata.obs.columns
-        for covar in cvlist:
-            if covar not in self.cv_lengths.keys():
-                cvcol = self.adata.obs[covar]
-                if is_categorical_dtype(cvcol):
-                    covar_dummy = pd.get_dummies(cvcol)  # To match cv_mats
-                    self.cv_lengths[covar] = covar_dummy.shape[1]
-                    self.cv_ticks[covar] = covar_dummy.columns.tolist()
-                else:
-                    self.cv_lengths[covar] = 1
-                    self.cv_ticks[covar] = False
-
-    def calc_svd_corr(self, cvlist):
-        self.cv_mats = calculate_svd_covar_corr(
-            self.cobj.U.T, self.adata.obs, cvlist, cv_mats=self.cv_mats)
 
 
-    # Functions for saving modules or the full object:
-    # ------------------------------------------------
-    def save_modules(self, graph_id, attr="leiden", as_df=True,
-                     filedir="./", filename=None):
-        """Save module list for a specific graph as txt or tsv."""
-        if filename is None:
-            filename = filedir + "module_df_" + self.csuff + "_" + \
-                attr + "_" + graph_id
-            filename += ".tsv" if as_df else ".txt"
-        self.graphs[graph_id].save_modules(
-            attr=attr, as_df=as_df, filename=filename)
+def calculate_margin_genes(X):
+    margin = np.mean(X > 0, axis=0).copy()
+    if sparse.issparse(X):
+        margin = np.array(margin)[0]
+    return(margin)
 
-    def save_adata(self):
-        """Save adata for saving object."""
-        # TODO: Currently only saves when file doesn't exist
-        # come up with a better choice of when to save adata:
-        if not os.path.exists(self.h5ad_file):
-            self.adata.write(self.h5ad_file)
+# Functions for saving modules:
+def save_modules(obj, graph_id, suffix, attr="leiden",
+                 as_df=True, filedir="./", filename=None):
+    """Save module list for a specific graph as txt or tsv."""
+    if filename is None:
+        filename = filedir + "module_df_" + suffix + "_" + \
+            attr + "_" + graph_id
+        filename += ".tsv" if as_df else ".txt"
 
-    # Functions for properly pickling these objects:
-    def __getstate__(self):
-        """Get state for object, removing adata, for pickling."""
-        # Save the adata object first
-        self.save_adata()
-        # Copy the object's state from self.__dict__
-        state = self.__dict__.copy()
-        # Remove the unpicklable entries (adata may be huge):
-        del state['adata']
-        # TODO: Should we also remove cobj (U, s, V?)
-        return state
+    # TODO: Move this function out of graphs
+    obj.graphs[graph_id].save_modules(
+        attr=attr, as_df=as_df, filename=filename)
 
-    def __setstate__(self, state):
-        """Load object properly, with adata separately."""
-        # Restore instance attributes (i.e., filename and lineno).
-        self.__dict__.update(state)
-        # Restore the adata with the h5ad_file handle:
-        self.adata = sc.read(self.h5ad_file)
+# NOTE: Had pickling __setstate__ and __getstate__ but removed
