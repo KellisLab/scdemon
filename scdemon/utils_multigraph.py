@@ -4,17 +4,36 @@ import numpy as np
 import leidenalg as la
 
 
-def compute_graphs(mod, plist, keep_all_z=True):
+def make_graphlist(mod, power_list, min_size=4, keep_all_z=True):
+    """Make and process a list of graphs."""
+    # TODO: allow this to work with a variety of values (SVD k, power, z, etc)
+    # Compute the graphs on the modules object:
+    graphs = compute_graphs(mod, power_list, keep_all_z=keep_all_z)
+    # Merge gene sets to ensure same sets:
+    full_nodes = get_intersection_graph_names(mod, graphs)
+    # Prune graphs to same gene set:
+    graphlist = []
+    for x in graphs:
+        g = mod.graphs[x].graph.copy()
+        g = prune_graph_to_nodes(g, full_nodes)
+        graphlist.append(g)
+    # Flag nodes not in large components:
+    keep_nodes = flag_graphlist_nodes(graphlist, min_size=min_size)
+    # Delete vertices not in keepnodes:
+    graphlist = clean_graphlist_nodes(graphlist, keep_nodes)
+    return(graphlist, graphs)
+
+
+def compute_graphs(mod, power_list, keep_all_z=True):
     """Compute graphs along a list of eigenvalue-power values."""
-    for power in plist:
+    for power in power_list:
         graph_id = f'p{power}'
         if graph_id not in mod.graphs.keys():
-            # TODO: correlation from power
-            mod.make_graph(graph_id,
-                           full_graph_only=True,
-                           power=power,
+            mod.make_graph(graph_id, multigraph=False,
+                           full_graph_only=True, power=power,
+                           filter_covariate=filter_covariate,
                            keep_all_z=keep_all_z)
-    return(['p' + str(x) for x in plist])
+    return(['p' + str(x) for x in power_list])
 
 
 def get_intersection_graph_names(mod, graphs):
@@ -59,26 +78,6 @@ def clean_graphlist_nodes(graphlist, keep_nodes):
     for g in graphlist:
         g.delete_vertices(to_delete)  # Remove nodes in components
     return(graphlist)
-
-
-def make_graphlist(mod, plist, min_size=4, keep_all_z=True):
-    """Make and process a list of graphs."""
-    # TODO: allow this to work with a variety of values (SVD k, power, z, etc)
-    # Compute the graphs on the modules object:
-    graphs = compute_graphs(mod, plist, keep_all_z=keep_all_z)
-    # Merge gene sets to ensure same sets:
-    full_nodes = get_intersection_graph_names(mod, graphs)
-    # Prune graphs to same gene set:
-    graphlist = []
-    for x in graphs:
-        g = mod.graphs[x].graph.copy()
-        g = prune_graph_to_nodes(g, full_nodes)
-        graphlist.append(g)
-    # Flag nodes not in large components:
-    keep_nodes = flag_graphlist_nodes(graphlist, min_size=min_size)
-    # Delete vertices not in keepnodes:
-    graphlist = clean_graphlist_nodes(graphlist, keep_nodes)
-    return(graphlist, graphs)
 
 
 def partition_graphlist(graphlist, resolution=3,
