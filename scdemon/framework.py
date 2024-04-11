@@ -3,13 +3,11 @@
 
 # Internal:
 from .graph import gene_graph
-# from .correlation import correlation
 from .correlation import (
     calculate_correlation,
     calculate_correlation_estimate,
     calculate_correlation_estimate_sd
 )
-
 
 
 from .auxiliary import calculate_svd_covar_corr
@@ -38,9 +36,11 @@ from anndata import AnnData
 # h5ad_file=None,  # File corresponding to adata (for saving)
 
 # TODO: standardize SVD vs. PCs nomenclature
+# TODO: set global imgdir?
 
 def run_modules(
     adata,
+    suffix=None,
     estimate_sd=False,
     seed=1, # TODO: add fixed random seed on construction
     filter_expr=None,
@@ -54,13 +54,13 @@ def run_modules(
     if type(obj) is AnnData:
         # Create modules object differently depending on object.
         mod = modules(adata,
-                      csuff=csuff,
+                      suffix=suffix,
                       estimate_sd=estimate_sd,
                       seed=seed,
                       filter_expr=filter_expr,
                       z=z,
                       svd_k=svd_k,
-                      calc_raw=calc_raw
+                      calc_raw=calc_raw,
                       use_fbpca=use_fbpca)
     else:
         # NOTE: If no anndata, where do pieces go?
@@ -74,7 +74,7 @@ def run_modules(
     # Maybe two parts - one is setup > correlation, second is make_graph >  modules
 
 
-class modules(object):
+class modules_core(object):
     """
     Calculate gene modules from anndata or stand-alone matrix.
     """
@@ -83,14 +83,15 @@ class modules(object):
                  adata,
                  X=None, meta=None, # TODO: Add alternative if no adata.obs
                  U=None, s=None, V=None, # If we want to pass these in
-
+                 suffix=None,
+                 # Arguments for setup:
                  seed=1,
                  estimate_sd=False,
                  filter_expr=None,
                  svd_k=100, # TODO: change to k, change example code to match
                  calc_raw=False,
                  keep_first_PC=False,
-                 use_fbpca=True
+                 use_fbpca=True,
                  cv_cutoff=0.4,
                  # Arguments for graph:
                  z=4,
@@ -110,6 +111,9 @@ class modules(object):
         self.meta = meta
         self.cvlist = self.adata.obs.columns # TODO: use meta if using X
         self.genes = self.adata.var_names  # labels, TODO different if X
+
+        # Tagline
+        self.suffix = suffix if suffix is not None else ''
 
         # Arguments for setup steps (up to correlation estimate)
         self.k = svd_k
@@ -217,7 +221,7 @@ class modules(object):
 
     def _assign_covariates_to_PCs(self, invert=False):
         """Calculate which components are correlated with each covariate."""
-        self.calc_svd_corr([covar])
+        # self._calculate_covariate_svd_correlation()
         for covar in self.cvlist:
             cmat = self.cv_mats[covar].T
             # TODO: fix this normalization issue
@@ -382,7 +386,7 @@ class modules(object):
         # TODO: Move make_graphlist into modules?
         # TODO fix, with changes to graphs
         graphlist, graphs = make_graphlist(self, power_list=power_list,
-                                           keep_all_z=keep_all_z
+                                           keep_all_z=keep_all_z,
                                            filter_covariate=filter_covariate)
         # Multiplex cluster the graphs:
         membership = partition_graphlist(graphlist, resolution=resolution)
@@ -391,9 +395,9 @@ class modules(object):
         # Make the graph object from the union of these graphs:
         # layout and calculate modules
         self._make_merged_graph_object(
-            graph_id, graphlist, corr=corr, **kwargs)
+            graph_id, graphlist, corr=corr, membership=membership, **kwargs)
 
-    def _get_average_correlation(self, graphs)
+    def _get_average_correlation(self, graphs):
         # TODO: Corr is correlation if not loaded as zcutoff.....!
         # NOTE: Extended assignment is always better with zcutoff
         # TODO: Standardize graph: use cutoff to put matrix -> zmat directly
@@ -407,12 +411,13 @@ class modules(object):
 
     # TODO: should we have this only be the graph object (like single graph
     # object) or full processing, as it is now. If so, rename
-    def _make_merged_graph_object(self, graph_id, graphlist, corr, **kwargs):
+    def _make_merged_graph_object(self, graph_id, graphlist, corr,
+                                  membership, **kwargs):
         """Combine all graphs, partition modules, layout, and populate."""
         # 1. Combine all of the graphs together:
         graph = self._combine_graphlist(graph_id, graphlist, corr, **kwargs)
         # 2. Partition to modules
-        self._partition_multigraph(graph_id, graph, graphlist)
+        self._partition_multigraph(graph_id, graph, graphlist, membership)
         # 3. Layout the merged graph:
         self.graphs[graph_id].layout_graph()
         # 4. Populate modules with all genes:
@@ -434,7 +439,7 @@ class modules(object):
         return(graph)
 
     # TODO: Could most of this construction into graph object instead
-    def _partition_multigraph(self, graph_id, graph, graphlist):
+    def _partition_multigraph(self, graph_id, graph, graphlist, membership):
         # Turn multiplex partition into modules
         # NOTE: Must reorder due to different order in the merge:
         gn = np.array(graphlist[0].vs['name'])
@@ -496,24 +501,22 @@ class modules(object):
         if return_genes:
             return out
 
+    # Function for saving modules from this object level
+    def save_modules(self, graph_id, attr="leiden",
+                    as_df=True, filedir="./", filename=None):
+        """Save module list for a specific graph as txt or tsv."""
+        if filename is None:
+            filename = filedir + "module_df_" + self.suffix + "_" + \
+                attr + "_" + graph_id
+            filename += ".tsv" if as_df else ".txt"
+
+        self.graphs[graph_id].save_modules(
+            attr=attr, as_df=as_df, filename=filename)
 
 def calculate_margin_genes(X):
     margin = np.mean(X > 0, axis=0).copy()
     if sparse.issparse(X):
         margin = np.array(margin)[0]
     return(margin)
-
-# Functions for saving modules:
-def save_modules(obj, graph_id, suffix, attr="leiden",
-                 as_df=True, filedir="./", filename=None):
-    """Save module list for a specific graph as txt or tsv."""
-    if filename is None:
-        filename = filedir + "module_df_" + suffix + "_" + \
-            attr + "_" + graph_id
-        filename += ".tsv" if as_df else ".txt"
-
-    # TODO: Move this function out of graphs
-    obj.graphs[graph_id].save_modules(
-        attr=attr, as_df=as_df, filename=filename)
 
 # NOTE: Had pickling __setstate__ and __getstate__ but removed

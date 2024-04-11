@@ -25,7 +25,7 @@ def plot_df_enrichment(obj, df, col, suffix, graph_id=None, imgdir='./',
                 "Graph with ID '%s' doesn't exist in this object." % graph_id)
         else:
             graph_obj = obj.graphs[graph_id]
-            plotname = obj.imgdir + "modules_degenr_heatmap_" + \
+            plotname = imgdir + "modules_degenr_heatmap_" + \
                 suffix + "." + ext
     # Plot DF enrichment based on the graph object:
     statsdf = _plot_df_enrichment_core(

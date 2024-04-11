@@ -4,11 +4,13 @@ import numpy as np
 import leidenalg as la
 
 
-def make_graphlist(mod, power_list, min_size=4, keep_all_z=True):
+def make_graphlist(mod, power_list, min_size=4,
+                   keep_all_z=True, filter_covariate=None):
     """Make and process a list of graphs."""
     # TODO: allow this to work with a variety of values (SVD k, power, z, etc)
     # Compute the graphs on the modules object:
-    graphs = compute_graphs(mod, power_list, keep_all_z=keep_all_z)
+    graphs = compute_graphs(mod, power_list, keep_all_z=keep_all_z,
+                            filter_covariate=filter_covariate)
     # Merge gene sets to ensure same sets:
     full_nodes = get_intersection_graph_names(mod, graphs)
     # Prune graphs to same gene set:
@@ -24,7 +26,7 @@ def make_graphlist(mod, power_list, min_size=4, keep_all_z=True):
     return(graphlist, graphs)
 
 
-def compute_graphs(mod, power_list, keep_all_z=True):
+def compute_graphs(mod, power_list, keep_all_z=True, filter_covariate=None):
     """Compute graphs along a list of eigenvalue-power values."""
     for power in power_list:
         graph_id = f'p{power}'

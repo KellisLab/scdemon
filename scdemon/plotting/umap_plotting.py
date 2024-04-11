@@ -85,10 +85,10 @@ def _plot_umap_grid(umat, scores, titles, plotname=None,
 
 # TODO: Plot a single module, several, or all modules:
 def plot_umap_grid(obj, graph_id, attr='leiden', plotname=None,
-                    ind=None, sel=None, width=2, s=0.5):
+                    ind=None, sel=None, width=2, s=0.5, imgdir='./'):
     if plotname is None:
-        plotname = obj.imgdir + "module_umap_grid_" + \
-            obj.csuff + "_" + graph_id + ".png"
+        plotname = imgdir + "module_umap_grid_" + \
+            obj.suffix + "_" + graph_id + ".png"
     # Plot umap grid:
     _plot_umap_grid(umat=obj.adata.obsm["X_umap"],
                     scores=obj.graphs[graph_id].scores[attr],

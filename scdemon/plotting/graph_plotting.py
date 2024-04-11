@@ -37,10 +37,10 @@ def plot_genes(obj, graph_id=None, basis='graph', attr=None,
             # If the graph exists, plot the genes under this graph:
             # NOTE: Also plots it to the object's imgdir
             if suffix is None:
-                suffix = obj.csuff + "_" + graph_id
+                suffix = obj.suffix + "_" + graph_id
             _plot_genes_for_graph(
                 obj.graphs[graph_id], basis=basis, attr=attr, color=color,
-                imgdir=obj.imgdir, suffix=suffix, ext=ext, **kwargs)
+                imgdir=imgdir, suffix=suffix, ext=ext, **kwargs)
 
 
 def _plot_genes_for_graph(obj, basis='graph', attr=None, color=None,
@@ -103,7 +103,7 @@ def _plot_gene_graph_from_gene_graph(obj, col=None, width=24, plotname=None,
 # TODO: Figure out to deal with non-categorical
 # TODO: Separate out the gene logfc score compute from the plotting
 def plot_gene_logfc(obj, graph_id, basis='graph', attr="celltype",
-                    fc_cut=2, p_cut=0.05, **kwargs):
+                    fc_cut=2, p_cut=0.05, imgdir='./', **kwargs):
     logging.info("Running rank genes on '%s'" % attr)
     sc.tl.rank_genes_groups(obj.adata, attr)
     iscat = obj.adata.obs[attr].dtype.name == "category"
@@ -135,5 +135,5 @@ def plot_gene_logfc(obj, graph_id, basis='graph', attr="celltype",
         # Plot graph, passing colors to genes:
         plot_genes(graph_object, basis=basis,
                    attr=namestr, color=vcols,
-                   suffix=obj.csuff + "_" + graph_id,
-                   imgdir=obj.imgdir, **kwargs)
+                   suffix=obj.suffix + "_" + graph_id,
+                   imgdir=imgdir, **kwargs)

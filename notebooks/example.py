@@ -35,14 +35,15 @@ logging.info("Loaded example dataset")
 imgdir = "./"
 # Make the scmodule object:
 max_k = 100
-mod = sm.modules(adata,
-                 # Where files+plots go / what they are called:
-                 csuff=tag, imgdir=imgdir,
-                 # Options for graph creation:
-                 estimate_sd=False,
-                 svd_k=max_k, filter_expr=0.05, z=4.5,
-                 # Overall usage/correlation computation options:
-                 calc_raw=False)
+mod = sm.modules_core(adata,
+                      # Tagline for plots
+                      suffix=tag,
+                      # imgdir=imgdir, TODO: Set global imgdir?
+                      # Options for graph creation:
+                      estimate_sd=False,
+                      svd_k=max_k, filter_expr=0.05, z=4.5,
+                      # Overall usage/correlation computation options:
+                      calc_raw=False)
 mod.setup()  # Setup the object
 
 
@@ -81,13 +82,26 @@ pl.plot_svd_corr(mod, cvlist)
 # Plot the average expression of leiden modules on covariates:
 pl.plot_heatmap_avgexpr(mod, graph_id, cvlist=cvlist, attr="leiden")
 
-# Make a graph from only specific SVD covariate-correlated components
-# Such as components correlated with celltypes:
-graph_id = 'subset'
-mod.make_subset_graph(graph_id, "leiden", cv_cutoff=2.0)
+
+# Make a graph from multiple resolutions:
+# ---------------------------------------
+graph_id = 'merge'
+mod.make_graph(graph_id, multigraph=True, power=[0,.5,1])
 
 # Plot these:
 pl.plot_genes(mod, graph_id, attr="leiden", show_labels=True, width=16)
 pl.plot_heatmap_avgexpr(mod, graph_id, cvlist=['leiden'], attr="leiden")
 pl.plot_umap_grid(mod, graph_id)
 
+
+# Make a graph from only specific non-covariate-correlated PCs
+# ------------------------------------------------------------
+# TODO: cv_cutoff was 2.0
+graph_id = 'subset'
+# Remove PCs correlated with the cell clustering (leiden)
+mod.make_graph(graph_id, filter_covariate="leiden")
+
+# Plot these:
+pl.plot_genes(mod, graph_id, attr="leiden", show_labels=True, width=16)
+pl.plot_heatmap_avgexpr(mod, graph_id, cvlist=['leiden'], attr="leiden")
+pl.plot_umap_grid(mod, graph_id)

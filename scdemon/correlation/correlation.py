@@ -59,56 +59,47 @@ class correlation(object):
         logging.debug("X: " + str(self.X.shape))
         logging.debug("Margin: " + str(self.margin.shape))
 
+#     def get_correlation(self, indices=None, keep_first=False, power=0):
+#         """Get correlation estimates from SVD and raw if calc_raw is True."""
 
-    def get_correlation(self, indices=None, keep_first=False, power=0):
-        """Get correlation estimates from SVD and raw if calc_raw is True."""
-
-        if indices is None:
-
-
-        else:
-            corr_subset = calculate_correlation_estimate(
-                self.U, self.s, self.V, power=power, indices=indices)
-
-
-        if self.corr_est is None or \
-                self.power != power:
-            self._calculate_estimated_correlation(
-                keep_first=keep_first, power=power)
-
-        self.corr_raw = self.get_raw_correlation()
-
-        return (self.corr_est, self.corr_raw)
-
-    def get_raw_correlation(self, force=False):
-        if force:
-            self.calc_raw = True
-        if self.corr_raw is None and self.calc_raw:
-            self.corr_raw = calculate_correlation(self.X, center=self.center)
-        # NOTE: else corr_raw is already None
-        return(self.corr_raw)
-
-#     def get_correlation_subset(self, indices, power=0):
-#         """Get a correlation estimate from a subset of SVD columns."""
-#         logging.info("Calculating correlation from subset of SVD columns")
-#         corr_subset = calculate_correlation_estimate(
+#         if indices is None:
+#             pass
+#         else:
+#             corr_subset = calculate_correlation_estimate(
 #                 self.U, self.s, self.V, power=power, indices=indices)
-#         return corr_subset
 
-    def _calculate_estimated_correlation(self, power=0, keep_first=False):
-        self.power = power
-        if self.use_v:
-            # Keep or remove first component (defaults to removing):
-            indices = None if keep_first else np.arange(1, self.U.shape[1])
-            logging.debug(indices)
-            self.corr_est = calculate_correlation_estimate(
-                self.U, self.s, self.V, power=power, indices=indices)
 
-    # TODO: allow both types of adjustments (centralize in graph vs. not
-    # in graph types)
+#         if self.corr_est is None or \
+#                 self.power != power:
+#             self._calculate_estimated_correlation(
+#                 keep_first=keep_first, power=power)
 
-    # TODO: Estimate the raw correlation SD as well.
-    def estimate_corr_sd(self, nperm=25, seed=1):
-        corr_mean, corr_sd = calculate_correlation_estimate_sd(
-            self.U, self.s, self.V, nperm=nperm, seed=seed)
-        return (corr_mean, corr_sd)
+#         self.corr_raw = self.get_raw_correlation()
+
+#         return (self.corr_est, self.corr_raw)
+
+#     def get_raw_correlation(self, force=False):
+#         if force:
+#             self.calc_raw = True
+#         if self.corr_raw is None and self.calc_raw:
+#             self.corr_raw = calculate_correlation(self.X, center=self.center)
+#         # NOTE: else corr_raw is already None
+#         return(self.corr_raw)
+
+#     def _calculate_estimated_correlation(self, power=0, keep_first=False):
+#         self.power = power
+#         if self.use_v:
+#             # Keep or remove first component (defaults to removing):
+#             indices = None if keep_first else np.arange(1, self.U.shape[1])
+#             logging.debug(indices)
+#             self.corr_est = calculate_correlation_estimate(
+#                 self.U, self.s, self.V, power=power, indices=indices)
+
+#     # TODO: allow both types of adjustments (centralize in graph vs. not
+#     # in graph types)
+
+#     # TODO: Estimate the raw correlation SD as well.
+#     def estimate_corr_sd(self, nperm=25, seed=1):
+#         corr_mean, corr_sd = calculate_correlation_estimate_sd(
+#             self.U, self.s, self.V, nperm=nperm, seed=seed)
+#         return (corr_mean, corr_sd)

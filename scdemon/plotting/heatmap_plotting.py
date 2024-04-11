@@ -8,6 +8,9 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 
 
+# TODO: standardize imgdir
+
+# Plot given the calculated matrices and relevant attributes
 def _plot_svd_corr(cvlist, cv_hratio, cv_mats, cv_ticks, svec, plotname,
                   cbar=False):
     """Plot heatmaps of correlation of svd components and covariates."""
@@ -40,16 +43,17 @@ def _plot_svd_corr(cvlist, cv_hratio, cv_mats, cv_ticks, svec, plotname,
 
 
 
-def plot_svd_corr(obj, cvlist, cbar=False):
-    obj.calc_svd_corr(cvlist)
-    plotname = obj.imgdir + "svd_corr_" + obj.csuff + ".png"
+# Plot from object
+def plot_svd_corr(obj, cvlist, cbar=False, imgdir='./'):
+    obj._calculate_covariate_svd_correlation()
     obj._calculate_covariate_lengths()
+    plotname = imgdir + "svd_corr_" + obj.suffix + ".png"
     cv_hratio = [obj.cv_lengths[covar] for covar in cvlist]
     _plot_svd_corr(cvlist=cvlist,
                    cv_hratio=cv_hratio,
                    cv_mats=obj.cv_mats,
                    cv_ticks=obj.cv_ticks,
-                   svec=obj.cobj.s,
+                   svec=obj.s,
                    plotname=plotname,
                    cbar=cbar)
 
@@ -58,10 +62,10 @@ def plot_svd_corr(obj, cvlist, cbar=False):
 # TODO: add plotting scale parameters:
 # TODO: Clean up - use pre-computed scores!
 def plot_heatmap_avgexpr(obj, graph_id, cvlist=None,
-                            attr="leiden", cbar=False):
+                         attr="leiden", cbar=False, imgdir='./'):
     """Plot heatmap of module average expression in each covariate."""
-    plotname = obj.imgdir + "heatmap_" + \
-        obj.csuff + "_" + graph_id + "_" + attr + ".png"
+    plotname = imgdir + "heatmap_" + \
+        obj.suffix + "_" + graph_id + "_" + attr + ".png"
     if cvlist is None:
         cvlist = ["celltype", "region", "niareagansc",
                     "cogdx", "Apoe_e4", "msex"]
