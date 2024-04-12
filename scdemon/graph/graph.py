@@ -235,22 +235,22 @@ class gene_graph(object):
         uw = umap.UMAP()
         self.umat = uw.fit_transform(corr_gene_subset)
 
-    def get_modules(self, attr="leiden", print_modules=False):
+    def get_modules(self, attr="leiden", adata=None, print_modules=False):
         """Get list of modules from graph and clustering."""
         if attr not in self.modules.keys():
             # Construct object if necessary:
-            self.populate_modules(self.adata, attr)
+            self.populate_modules(adata, attr)
         modules = self.modules[attr]
         if print_modules:
             for ll in modules.keys():
                 print(ll, " ".join(modules[ll]))
         return modules
 
-    def get_module_assignment(self, attr="leiden"):
+    def get_module_assignment(self, attr="leiden", adata=None):
         """Get module assignment for each gene as a pandas DataFrame."""
         if attr not in self.modules.keys():
             # Construct object if necessary:
-            self.populate_modules(self.adata, attr)
+            self.populate_modules(adata, attr)
         mdf = pd.DataFrame({'gene': self.genes,
                             'module': self.module_match[attr]})
         return mdf
@@ -275,6 +275,8 @@ class gene_graph(object):
     # Modules lists functions (requires external adata or X):
     def populate_modules(self, adata, attr='leiden'):
         """Populate modules data."""
+        if adata is None:
+            raise TypeError("adata is None, need adata to populate modules")
         logging.info("Populating modules data")
         # TODO: make orderedDict for the module names?
         partition = self.assign[attr]
@@ -295,7 +297,6 @@ class gene_graph(object):
                 avgexpr = avgexpr.T
             self.modules[attr][i] = mgenes
             self.scores[attr][:, i] = avgexpr  # For plotting on cell umap
-
             # Find the top 3 genes (for naming module):
             cv = vcorrcoef(subadata.X.T, avgexpr)
             topgenes = ", ".join(mgenes[np.argsort(-cv)][0:3])
@@ -327,7 +328,8 @@ class gene_graph(object):
             self.module_match[attr] = np.argmax(self.module_match[attr], 1)
 
     # Add save functions here (graph and full object as well):
-    def save_modules(self, attr="leiden", as_df=True, filename=None):
+    def save_modules(self, attr="leiden", as_df=True,
+                     filename=None, adata=None):
         """Save module list as txt or tsv."""
         if as_df:
             mdf = pd.DataFrame({"gene": np.array(self.graph.vs["name"]),
@@ -335,7 +337,8 @@ class gene_graph(object):
                                 "color": self.colors[attr]})
             mdf.to_csv(filename, sep="\t")
         else:
-            mod_list = self.get_modules(attr=attr, print_modules=False)
+            mod_list = self.get_modules(attr=attr, adata=adata,
+                                        print_modules=False)
             with open(filename, "w") as f:
                 for key in mod_list.keys():
                     line = str(key) + ": " + " ".join(mod_list[key]) + "\n"

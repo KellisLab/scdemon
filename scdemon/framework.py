@@ -488,12 +488,13 @@ class modules_core(object):
     def get_modules(self, graph_id, attr="leiden", print_modules=False):
         """Get list of modules from graph and clustering."""
         modules = self.graphs[graph_id].get_modules(
-            attr, print_modules=print_modules)
+            attr=attr, adata=self.adata, print_modules=print_modules)
         return modules
 
     def get_module_assignment(self, graph_id, attr="leiden"):
         """Get module assignment for each gene as a pandas DataFrame."""
-        mdf = self.graphs[graph_id].get_module_assignment(attr=attr)
+        mdf = self.graphs[graph_id].get_module_assignment(
+            attr=attr, adata=self.adata)
         return mdf
 
     def find_gene(self, graph_id, gene, return_genes=True, print_genes=True):
