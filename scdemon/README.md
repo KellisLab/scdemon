@@ -29,24 +29,24 @@ mod.make_graph(graph_id='base',
         filter_covariate=None)
 ```
 In `framework`:
-3. Select PCs to use
-4. Estimate the correlation
+1. Select PCs to use
+2. Estimate the correlation
 
 Within the specific `graph` object:
-5. Build adjacency matrix
-6. Filter k-NN (thresholding)
-    - Using bivariate splines
-    - Using `robust_SE_t`
-7. Perform community detection
-    - Leiden
-    - Hierarchical clustering
-    - NMF / Factor Analysis
-    - BigClam
-    - Stoch. block model
+1. Build adjacency matrix
+2. Filter k-NN (thresholding)
+    * Using bivariate splines
+    * Using `robust_SE_t`
+3. Perform community detection
+    * Leiden
+    * Hierarchical clustering
+    * NMF / Factor Analysis
+    * BigClam
+    * Stoch. block model
 
 Outside of module or graph objects:
-8. Downstream tasks
-9. Benchmarking
+1. Downstream tasks
+2. Benchmarking
 
 
 ### Usage
