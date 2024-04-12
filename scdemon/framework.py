@@ -181,6 +181,7 @@ class modules_core(object):
         if not self._check_PCA():
             if self.use_fbpca and not 'X_pca' in self.adata.obsm:
                 # TODO: Check with Ben if other preferred PCA method
+                # arpack / scipy / sklearn?
                 logging.info("Calculating PCA of X with fbpca")
                 self.U, self.s, self.V = fbpca.pca(
                     self.X, k=self.k, raw=not self.center)
@@ -325,7 +326,7 @@ class modules_core(object):
         # 3. Select which PCs to keep:
         indices = self._select_PCs(filter_covariate=filter_covariate)
         # 4. Estimate correlation (sets as self.corr):
-        self._calculate_correlation(indices=indices, power=power)
+        self._calculate_correlation(indices=indices, power=power) # TODO: check raw works
         # TODO: Decoupled from estimate_sd, but make sd usage better later
         # Once we have the appropriate bootstrapping
         corr_sd = self.corr_sd if use_sd else None
