@@ -4,7 +4,6 @@
 # Class for handling a gene graph:
 # Updated: 06/28/21
 # --------------------------------
-from .adjacency_matrix import adjacency_matrix
 from ..auxiliary import vcorrcoef
 from ..data import snap_colors
 
@@ -22,37 +21,18 @@ import leidenalg as la
 class gene_graph(object):
     def __init__(self,
                  corr,
+                 adj,
                  genes,
                  graph=None,
-                 corr_sd=None,
-                 cutoff=None,
-                 use_zscore=True,
                  edge_weight=None,
-                 margin=None,
                  layout_method="fr",
-                 knn_k=None,
-                 min_size=4,
-                 z=None,
-                 scale=None,
-                 degree_cutoff=0):
+                 min_size=4):
         self.corr = corr
+        self.adj = adj
         self.genes = genes
         self.graph = graph  # For giving pre-computed graph
 
         # Setup the adjacency matrix processing object:
-        self.adj = adjacency_matrix(
-            self.corr,
-            corr_sd=corr_sd,
-            cutoff=cutoff,
-            use_zscore=use_zscore,
-            labels=self.genes,
-            margin=margin,
-            z=z,
-            knn_k=knn_k,
-            scale=scale,
-            degree_cutoff=degree_cutoff,
-        )
-
         self.min_size = min_size
         self.edge_weight = edge_weight
         self.layout_method = layout_method
@@ -90,11 +70,11 @@ class gene_graph(object):
             self.layout_graph(layout_method=self.layout_method)
 
     # TODO: collapse into same method?
-    def construct_full_graph(self, keep_all_z=True):
+    def construct_full_graph(self):
         """Construct the full adjacency graph for multiplexing purposes."""
         if self.graph is None:
             # Process adjacency matrix:
-            _, _, _ = self.adj.get_adjacency(keep_all_z=keep_all_z)
+            _, _, _ = self.adj.get_adjacency()
             # Use the full, unaltered set of genes:
             self.adjacency = self.adj.full_adjacency
             self.kept_genes = self.adj.full_labels

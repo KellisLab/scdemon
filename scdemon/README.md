@@ -59,6 +59,9 @@ pl.plot_genes(mo, 'base')
 
 ```
 
+### TODO:
+- Add pytest tests for basic functionality, with dummy objects or very small dataset
+
 
 ### Old todolist / desirables:
 Done

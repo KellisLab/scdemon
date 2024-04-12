@@ -40,11 +40,11 @@ mod = sm.modules_core(adata,
                       suffix=tag,
                       # imgdir=imgdir, TODO: Set global imgdir?
                       # Options for graph creation:
-                      estimate_sd=False,
-                      svd_k=max_k, filter_expr=0.05, z=4.5,
-                      # Overall usage/correlation computation options:
-                      calc_raw=False)
+                      svd_k=max_k, filter_expr=0.05)
 mod.setup()  # Setup the object
+
+# 1. Make a graph using robust_se:
+mod.make_graph('rse', method='robust_se')
 
 
 # Make graph using the selected parameters for basic analysis:
@@ -83,25 +83,27 @@ pl.plot_svd_corr(mod, cvlist)
 pl.plot_heatmap_avgexpr(mod, graph_id, cvlist=cvlist, attr="leiden")
 
 
-# Make a graph from multiple resolutions:
-# ---------------------------------------
-graph_id = 'merge'
-mod.make_graph(graph_id, multigraph=True, power=[0,.5,1])
+# Make some other graphs based on different methods:
+# --------------------------------------------------
+# 1. Make a graph using robust_se:
+mod.make_graph('rse', method='robust_se')
 
-# Plot these:
-pl.plot_genes(mod, graph_id, attr="leiden", show_labels=True, width=16)
-pl.plot_heatmap_avgexpr(mod, graph_id, cvlist=['leiden'], attr="leiden")
-pl.plot_umap_grid(mod, graph_id)
+# 2. Make a graph from multiple resolutions:
+mod.make_graph('merge', multigraph=True, power=[0,.5,1])
+
+# 3. Make a graph from the raw correlation:
+mod.make_graph('raw', raw=True)
+
+# 4. Remove PCs correlated with the cell clustering (leiden)
+mod.make_graph('subset', filter_covariate="leiden")
 
 
-# Make a graph from only specific non-covariate-correlated PCs
-# ------------------------------------------------------------
-# TODO: cv_cutoff was 2.0
-graph_id = 'subset'
-# Remove PCs correlated with the cell clustering (leiden)
-mod.make_graph(graph_id, filter_covariate="leiden")
+# Plot these graphs:
+# ------------------
+graphlist = ['rse', 'merge', 'subset', 'raw']
+for graph_id in graphlist:
+    pl.plot_genes(mod, graph_id, attr="leiden", show_labels=True, width=16)
+    pl.plot_heatmap_avgexpr(mod, graph_id, cvlist=['leiden'], attr="leiden")
+    pl.plot_umap_grid(mod, graph_id)
 
-# Plot these:
-pl.plot_genes(mod, graph_id, attr="leiden", show_labels=True, width=16)
-pl.plot_heatmap_avgexpr(mod, graph_id, cvlist=['leiden'], attr="leiden")
-pl.plot_umap_grid(mod, graph_id)
+

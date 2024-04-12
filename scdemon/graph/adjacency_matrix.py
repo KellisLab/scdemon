@@ -2,7 +2,7 @@
 """Class for handling an adjacency matrix."""
 # --------------------------------------
 # Class for handling an adjacency matrix
-# Updated: 06/28/21
+# Updated: 04/12/24
 # --------------------------------------
 from .utils_adjacency import (
     prune_degree,
@@ -27,31 +27,34 @@ class adjacency_matrix(object):
     def __init__(
         self,
         corr,
+        method='bivariate',
         corr_sd=None,
-        cutoff=None,
-        use_zscore=True,
         labels=None,
-        z=None,
         margin=None,
+        # Threshold arguments:
+        cutoff=0.4, z=4.5,
+        zero_outliers=True,
+        keep_all_z=False,
+        # Pruning graph arguments:
         knn_k=None,  # k-NN
         scale=None,
-        zero_outliers=True,
-        degree_cutoff=1
+        degree_cutoff=0
     ):
         """Initialize adjacency matrix class."""
         self.corr = corr
+        self.method = method
         self.corr_sd = corr_sd  # Estimated sd for each pair
         self.labels = labels
         self.indices = np.arange(len(self.labels))
+        self.margin = margin  # Margin (fraction non-zero) of dataset
+
+        # Arguments for thresholding
         self.cutoff = cutoff
         self.z = z  # For adjacency cutoff
         self.zero_outliers = zero_outliers  # For getting estimates of cutoffs
-        self.use_zscore = use_zscore
-        if not self.use_zscore:  # Use cutoff if not using zscore method
-            if self.cutoff is None:
-                self.cutoff = 0.4
+        self.keep_all_z = keep_all_z
 
-        self.margin = margin  # Margin (fraction non-zero) of dataset
+        # Arguments for pruning
         self.knn_k = knn_k
         self.scale = scale
         self.degree_cutoff = degree_cutoff
@@ -59,46 +62,62 @@ class adjacency_matrix(object):
         logging.debug("Margin: " + str(self.margin.shape))
         logging.debug("Corr: " + str(self.corr.shape))
 
-    def get_adjacency(self, keep_all_z=False):
+        # Create adjacency matrix directly with constructor:
+        self._create_adjacency_matrix()
+
+    def get_adjacency(self):
         """Get the adjacency matrix and the final kept labels."""
         if self.adjacency is None:
-            self._process_adjacency(keep_all_z=keep_all_z)
+            self._create_adjacency_matrix()
+
         return(self.adjacency, self.labels, self.indices)
 
-    def _process_adjacency(self, keep_all_z=False):
-        """Process given correlation matrix into the adjacency matrix."""
-        self._create_adjacency_matrix(keep_all_z=keep_all_z)
+    def _create_adjacency_matrix(self):
+        """Threshold + prune correlation to create adjacency matrix."""
+        # Threshold the correlation matrix to get the adjacency
+        self.adjacency = self._threshold_correlation_matrix()
 
+        # Full and mostly empty adjacency, for multiplexing graphs:
+        self.full_adjacency = self.adjacency
+        self.full_labels = self.labels
+
+        # Prune adjacency matrix:
+        self._prune_adjacency()
+
+    def _threshold_correlation_matrix(self):
+        """Threshold correlation to get adjacency matrix."""
+        logging.info(
+            "Thresholding correlation with method '%s' to make adjacency" %
+            self.method)
+        if self.method == 'cutoff':
+            adjacency = self.corr * (self.corr > self.cutoff)
+            adjacency = adjacency - np.diag(np.diag(adjacency))
+            adjacency = sparse.coo_matrix(adjacency)
+        elif self.method == 'bivariate':
+            _, adjacency, _ = \
+                zscore_from_bivariate_cutoff(
+                    self.corr, self.margin, z=self.z,
+                    zero_outliers=self.zero_outliers,
+                    keep_all_z=self.keep_all_z)
+        elif self.method == 'sd':
+            adjacency = adj_from_sd_est(
+                self.corr, self.corr_sd, self.margin, z=self.z)
+        elif self.method == 'robust_se':
+            adjacency = self.corr # If already thresholded
+        else:
+            raise ValueError(
+                "Method %s not in (cutoff, bivariate, sd, robust_se)" %
+                self.method)
+        return(adjacency)
+
+    def _prune_adjacency(self):
         # Prune the created matrix:
         if self.scale is not None:
             self._prune_by_scale()
         if self.knn_k is not None:
             self._prune_by_knn()
-
         # Clean up nodes with low or 0 degree after pruning by other methods:
         self._prune_by_degree()
-
-    def _create_adjacency_matrix(self, keep_all_z=False):
-        """Create adjacency matrix from given correlation."""
-        logging.info("Creating adjacency matrix from given correlation.")
-        if not self.use_zscore:
-            self.adjacency = self.corr * (self.corr > self.cutoff)
-            self.adjacency = self.adjacency - np.diag(np.diag(self.adjacency))
-            self.adjacency = sparse.coo_matrix(self.adjacency)
-        else:
-            if self.corr_sd is None:
-                self.zmat, self.adjacency, self.zcut = \
-                    zscore_from_bivariate_cutoff(
-                        self.corr, self.margin, z=self.z,
-                        zero_outliers=self.zero_outliers,
-                        keep_all_z=keep_all_z)
-            else:
-                self.adjacency = adj_from_sd_est(
-                    self.corr, self.corr_sd, self.margin, z=self.z)
-        # Save the full and mostly empty adjacency for multiplexing graphs:
-        # TODO: Set option to save or not?
-        self.full_adjacency = self.adjacency
-        self.full_labels = self.labels
 
     def _prune_by_scale(self):
         """Prune adjacency by a relative cutoff of outgoing edges."""

@@ -8,9 +8,7 @@ from .utils import (
 )
 
 from .auxiliary import vcorrcoef
-from .graph import gene_graph
-# from .correlation import correlation
-# from .modules import modules # Change
+from .graph import gene_graph, adjacency_matrix
 from .framework import modules_core # Change
 
 from .plotting import plot_genes, plot_umap_grid, plot_svd_corr
