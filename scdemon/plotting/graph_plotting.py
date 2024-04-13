@@ -68,7 +68,7 @@ def _plot_genes_for_graph(obj, basis='graph', attr=None, color=None,
             obj, col=col, plotname=plotname, attr=attr, **kwargs)
     elif basis == 'umap':
         if obj.umat is None:
-            obj._compute_umap()
+            obj.compute_umap()
         _plot_gene_umap_from_gene_graph(
             obj, col=col, plotname=plotname, **kwargs)
 

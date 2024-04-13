@@ -338,7 +338,8 @@ class modules_core(object):
         if not adjacency_only and full_graph_only:
             # Compute the full, unaltered, graph for multiplexing,
             # but do not cluster or create modules
-            self.graphs[graph_id].construct_graph(full=True)
+            self.graphs[graph_id].construct_graph(
+                full_graph=True, modules=False, layout=False)
         else:
             # Build the graph, get modules, and annotate genes:
             # TODO: simplify where adata is called (for populate modules):
@@ -384,8 +385,8 @@ class modules_core(object):
 
 
     # TODO: Simplify inheritance of kwargs params:
-    def _make_single_graph_object(self, graph_id, corr, adj,
-                                  graph=None, # TODO: if have graph, skip steps
+    def _make_single_graph_object(self, graph_id, corr,
+                                  adj=None, graph=None, # Either one needed
                                   edge_weight=None,
                                   min_size=4,
                                   layout_method="fr"):
@@ -413,6 +414,7 @@ class modules_core(object):
             self, power_list=power_list, keep_all_z=keep_all_z,
             filter_covariate=filter_covariate, **kwargs)
         # Multiplex cluster the graphs:
+        # NOTE: Leiden partition here, could move to graph utils, add methods
         membership = partition_graphlist(graphlist, resolution=resolution)
         # Calculate the average correlation:
         corr = self._get_average_correlation(graphs)
@@ -441,7 +443,9 @@ class modules_core(object):
         # 1. Combine all of the graphs together:
         graph = self._combine_graphlist(graph_id, graphlist, corr, **kwargs)
         # 2. Partition to modules
-        self._partition_multigraph(graph_id, graph, graphlist, membership)
+        self.graphs[graph_id]._partition_multigraph(
+            graph, graphlist, membership, method='leiden')
+        # self._partition_multigraph(graph_id, graph, graphlist, membership)
         # 3. Layout the merged graph:
         self.graphs[graph_id].layout_graph()
         # 4. Populate modules with all genes:
@@ -464,18 +468,6 @@ class modules_core(object):
         self.graphs[graph_id].kept_genes = graph.vs['name']
         return(graph)
 
-    # TODO: Could most of this construction into graph object instead
-    def _partition_multigraph(self, graph_id, graph, graphlist, membership):
-        # Turn multiplex partition into modules
-        # NOTE: Must reorder due to different order in the merge:
-        gn = np.array(graphlist[0].vs['name'])
-        reord = np.array([np.where(gn == x)[0][0] for x in graph.vs['name']])
-        # gn[reord] == graph.vs['name']  # If we want to check correct.
-        membership = np.array(membership)[reord]
-        ptns = np.unique(membership)
-        partition = [np.where(membership == x)[0] for x in ptns]
-        self.graphs[graph_id].get_modules_from_partition(partition, 'leiden')
-
     def get_k_stats(self, k_list, power=0, resolution=None, **kwargs):
         """Get statistics on # genes and # modules for each k setting."""
         ngenes = []
@@ -488,7 +480,8 @@ class modules_core(object):
             # TODO: MAKE ADJACENCY INSTEAD Here
             raise NotImplementedError
             try:
-                self._make_single_graph_object(graph_id, corr=corr_subset, **kwargs)
+                self._make_single_graph_object(
+                    graph_id, corr=corr_subset, **kwargs)
                 self.graphs[graph_id].construct_graph(
                     resolution=resolution, layout=False)
                 # Store number of genes and modules:

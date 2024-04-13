@@ -6,7 +6,12 @@
 # --------------------------------
 from ..auxiliary import vcorrcoef
 from ..data import snap_colors
-from .utils_community_detection import compute_leiden_partition
+from .utils_community_detection import (
+    calculate_gene_modules_leiden,
+    get_modules_from_partition,
+    set_module_colors
+)
+
 from .utils_pruning import prune_graph_components, prune_graph_degree
 
 import logging
@@ -21,16 +26,18 @@ import igraph
 class gene_graph(object):
     def __init__(self,
                  corr,
-                 adj,
                  genes,
+                 adj=None,
                  graph=None,
                  edge_weight=None,
                  layout_method="fr",
                  min_size=4):
         self.corr = corr
-        self.adj = adj
         self.genes = genes
+        self.adj = adj      # Adjacency matrix object
         self.graph = graph  # For giving pre-computed graph
+        if (graph is None) and (adj is None):
+            raise ValueError("Require either graph or adjacency object.")
 
         # Setup the adjacency matrix processing object:
         self.min_size = min_size
@@ -53,8 +60,8 @@ class gene_graph(object):
         self.module_match = {}
 
     # TODO: Add options for different methods of module detection here:
-    def construct_graph(self, full=False, resolution=2,
-                        layout=True, method='leiden'):
+    def construct_graph(self, resolution=2, method='leiden',
+                        full_graph=False, modules=True, layout=True):
         """Construct the graph object and find gene modules."""
         # Building adjacency > graph > modules, handled by graph object:
         if self.graph is None:
@@ -63,10 +70,12 @@ class gene_graph(object):
                 self.adj.get_adjacency()
             # 6. Create k-NN (thresholding) from adjacency
             # Note: full adjacency graph is for multi-graph purposes.
-            self._make_graph(full=full)
-            # TODO: check if modules is None:
+            self._make_graph(full=full_graph)
+        # TODO: check if modules is None, also remake if made new graph
+        if modules:
             # 7. Perform community detection (NMF, BigClam, Leiden)
-            self.calculate_gene_modules(resolution=resolution)
+            self.calculate_gene_modules(
+                resolution=resolution, method=method)
         if layout:
             # 7a. Layout graph
             self.layout_graph(layout_method=self.layout_method)
@@ -112,46 +121,38 @@ class gene_graph(object):
         else:
             self.layout = self.graph.layout(layout_method)
 
-    def calculate_gene_modules(self,
-                               method="leiden",
-                               resolution=None,
-                               partition_type=None,
-                               use_weights=False,
-                               n_iterations=-1,
-                               random_state=1):
+    def calculate_gene_modules(self, method="leiden", **kwargs):
         """Calculate modules from gene-gene graph using graph clustering."""
         logging.info("Running module detection using method=" + str(method))
-        if method == "leiden":
-            partition = compute_leiden_partition(
-                graph=self.graph,
-                resolution=resolution,
-                partition_type=partition_type,
-                use_weights=use_weights,
-                n_iterations=n_iterations,
-                random_state=random_state)
+        # TODO: fix assigning method for factors
+        if method == 'leiden':
+            self.assign[method] = calculate_gene_modules_leiden(
+                self.graph, **kwargs)
         else:
             # TODO: implement louvain, resolution seems more tunable?
-            logging.warning("Louvain, other methods not implemented yet.")
-        # Get modules once the partition is calculated:
-        self.get_modules_from_partition(partition, method)
+            raise ValueError("Method '%s' not found" % method)
 
-    # TODO: put modules calculations into separate utils file
-    def get_modules_from_partition(self, partition, method):
-        # Initialize and assign each node to a cluster:
-        self.assign[method] = (np.zeros(len(self.graph.vs)) - 1).astype(int)
-        part_list = [np.array(x) for x in list(partition)]
-        nclust = len(part_list)
-        for i in range(nclust):
-            self.assign[method][part_list[i]] = i
+        # TODO: fix color for factors, maybe just store one color per module
+        self.colors[method] = set_module_colors(
+            self.assign[method], self.snapcols)
 
-        # Assign colors to each cluster:
-        rep_col = int(np.ceil((nclust + 2) / (self.ncols * 1.0)))
-        part_cols = np.array((self.snapcols * rep_col)[1:(1 + nclust)])
-        self.colors[method] = part_cols[self.assign[method]]
-        logging.info("Found " + str(nclust) + " clusters")
+    # TODO: put full handling of multigraph in gene_graph, including graphlist
+    def _partition_multigraph(self, graph, graphlist, membership,
+                              method = 'leiden'):
+        # Turn multiplex partition into modules
+        # NOTE: Must reorder due to different order in the merge:
+        gn = np.array(graphlist[0].vs['name'])
+        reord = np.array([np.where(gn == x)[0][0] for x in graph.vs['name']])
+        # gn[reord] == graph.vs['name']  # If we want to check correct.
+        membership = np.array(membership)[reord]
+        ptns = np.unique(membership)
+        partition = [np.where(membership == x)[0] for x in ptns]
+        self.assign[method] = get_modules_from_partition(graph, partition)
+        self.colors[method] = set_module_colors(
+            self.assign[method], self.snapcols)
 
     # TODO: Allow compute on adjusted adjacency
-    def _compute_umap(self):
+    def compute_umap(self):
         """Calculate UMAP for correlation estimate underlying graph."""
         import umap
         logging.info("Calculating UMAP for graph adjacency.")
@@ -275,5 +276,4 @@ class gene_graph(object):
                     line = str(key) + ": " + " ".join(mod_list[key]) + "\n"
                     f.write(line)
         logging.info("Wrote modules to:" + str(filename))
-
 
