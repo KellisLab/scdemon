@@ -5,71 +5,11 @@ import logging
 import numpy as np
 import pandas as pd
 from scipy import sparse
-import scipy.stats as st
-from scipy.interpolate import SmoothBivariateSpline
-
-
-def prune_degree(aw, degree_cutoff):
-    """Remove nodes with degree of `degree_cutoff` or lower."""
-    logging.debug("Removing nodes with degree <=" + str(degree_cutoff))
-    aw = aw.tocsr()
-    rind = np.array((np.sum(aw > 0, axis=1) > degree_cutoff).T)[0]
-    cind = np.array((np.sum(aw > 0, axis=0) > degree_cutoff))[0]
-    ind = rind + cind
-    aw = aw[ind, :]
-    aw = aw[:, ind]
-    return (aw, ind)
-
-
-# External / auxiliary functions for graph operations:
-def prune_scale(aw, scale=0.90):
-    """Prune graph by a relative scaling value."""
-    logging.debug("Removing edges below " + str(round(scale*100, 2)) +
-                 "\\% of max edge for each node.")
-    # TODO: handle 0s for max:
-    awm1 = np.max(aw, axis=1).T.toarray()[0]
-    awm2 = np.max(aw, axis=0).toarray()[0]
-    awm = np.vstack((awm1, awm2))
-    awm = np.max(awm, axis=0)
-    aw = aw.tocoo()
-    scl = np.vstack((awm[aw.row], awm[aw.col]))
-    scl = np.max(scl, axis=0)
-    pct_data = aw.data / scl
-    kind = pct_data > scale
-    aw = sparse.coo_matrix(
-        (aw.data[kind], (aw.row[kind], aw.col[kind])), shape=aw.shape)
-    return aw
-
-
-def prune_knn(aw, k=50, twodir=True, row_only=False):
-    """Prune graph to maximum k for each node."""
-    logging.debug("Pruning graph to maximum k-edges for each node")
-    aw = aw.tocoo()
-    ind = np.argsort(-aw.data)  # Sort correlations
-    mk = np.zeros(aw.shape[0], int)  # Kept margin
-    keepind = np.zeros(len(ind), int)
-    # Add indices in order of strength:
-    for i in range(len(ind)):
-        r = aw.row[i]
-        c = aw.col[i]
-        if twodir:
-            cond = mk[r] < k or mk[c] < k
-        else:
-            cond = mk[r] < k and mk[c] < k
-        if cond:
-            mk[r] += 1
-            if twodir or not row_only:
-                mk[c] += 1
-            keepind[i] = 1
-    # Remove edges:
-    kind = ind[keepind == 1]
-    aw = sparse.coo_matrix((aw.data[kind], (aw.row[kind], aw.col[kind])),
-                           shape=aw.shape)
-    return aw
 
 
 def set_zscore(p, n):
     """Set a z-score for p-value p in n tests."""
+    import scipy.stats as st
     # TODO: get proper BY testing correction equation
     z = -st.norm.ppf(p / n)  # If z is none.
     return z
@@ -127,6 +67,7 @@ def get_binned_stats(corr, dmarg, bins, zero_outliers=True):
 
 def smooth_binned_stats(smean, ssd, scount, xs, bins, min_sd=0.01):
     logging.info("Fitting + predicting spline")
+    from scipy.interpolate import SmoothBivariateSpline
     overall_mean = np.mean(smean.data)
     overall_sd = np.mean(ssd.data)
     logging.debug("mean and sd: " + str(overall_mean) + ", " + str(overall_sd))

@@ -307,8 +307,6 @@ class modules_core(object):
             self._make_single_graph(graph_id, power=power, **kwargs)
 
     # Build the graph object and store in dictionary:
-    # TODO: Clarify the hierarchy of options -
-    # merge use_zscore and z and cutoff if necessary.
     # TODO: Simplify inheritance of kwargs params:
     def _make_single_graph(self, graph_id,
                            # Correlation options:
@@ -326,7 +324,6 @@ class modules_core(object):
         indices = self._select_PCs(filter_covariate=filter_covariate)
 
         # 4. Estimate correlation and 5. Threshold correlation:
-        # TODO: Add options for raw and for different thresholding methods
         corr, adj = self._construct_adjacency_matrix(
             # Options for constructing correlation
             indices=indices, power=power, raw=raw,
@@ -335,14 +332,13 @@ class modules_core(object):
             **kwargs)
 
         # Make graph with adjacency instead of correlation:
-        # TODO: get constructor working with adjacency not corr
         self._make_single_graph_object(graph_id, corr=corr, adj=adj, **kwargs)
 
         # Process graph:
         if not adjacency_only and full_graph_only:
             # Compute the full, unaltered, graph for multiplexing,
             # but do not cluster or create modules
-            self.graphs[graph_id].construct_full_graph()
+            self.graphs[graph_id].construct_graph(full=True)
         else:
             # Build the graph, get modules, and annotate genes:
             # TODO: simplify where adata is called (for populate modules):

@@ -1,16 +1,15 @@
 #!/usr/bin/python
 """Class for handling an adjacency matrix."""
-# --------------------------------------
-# Class for handling an adjacency matrix
-# Updated: 04/12/24
-# --------------------------------------
 from .utils_adjacency import (
-    prune_degree,
-    prune_scale,
-    prune_knn,
     zscore_from_bivariate_cutoff,
     adj_from_sd_est
 )
+from .utils_pruning import (
+    prune_adj_degree,
+    prune_adj_scale,
+    prune_adj_knn,
+)
+
 
 import logging
 import numpy as np
@@ -122,18 +121,19 @@ class adjacency_matrix(object):
     def _prune_by_scale(self):
         """Prune adjacency by a relative cutoff of outgoing edges."""
         logging.info("Pruning by relative cutoff, scale=" + str(self.scale))
-        self.adjacency = prune_scale(self.adjacency, scale=self.scale)
+        self.adjacency = prune_adj_scale(self.adjacency, scale=self.scale)
 
     def _prune_by_knn(self):
         """Prune adjacency by a k-NN keeping top k edges."""
         logging.info("Pruning by KNN, K=" + str(self.knn_k))
-        self.adjacency = prune_knn(self.adjacency, k=self.knn_k)
+        self.adjacency = prune_adj_knn(self.adjacency, k=self.knn_k)
 
     def _prune_by_degree(self):
         """Prune adjacency by the degree of each node."""
         logging.info("Pruning by degree, cutoff=" + str(self.degree_cutoff))
         # Remove nodes with no/very few links:
-        self.adjacency, ind = prune_degree(self.adjacency, self.degree_cutoff)
+        self.adjacency, ind = prune_adj_degree(
+            self.adjacency, self.degree_cutoff)
         self.labels = self.labels[ind]
         self.indices = self.indices[ind]
         self.adjacency = sparse.csr_matrix(self.adjacency)

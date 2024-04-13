@@ -43,8 +43,8 @@ mod = sm.modules_core(adata,
                       svd_k=max_k, filter_expr=0.05)
 mod.setup()  # Setup the object
 
-# 1. Make a graph using robust_se:
-mod.make_graph('rse', method='robust_se')
+# # 1. Make a graph using robust_se:
+# mod.make_graph('rse', method='robust_se')
 
 
 # Make graph using the selected parameters for basic analysis:
