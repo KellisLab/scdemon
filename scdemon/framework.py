@@ -173,9 +173,12 @@ class modules_core(object):
                     import scanpy as sc
                     logging.debug("Computing PCA through scanpy")
                     sc.tl.pca(self.adata, n_comps=self.k)
-                self.U = self.adata.obsm["X_pca"]  # TODO: FIX U for scanpy
-                self.s = self.adata.uns["pca"]["variance"]
                 self.V = self.adata.varm["PCs"].T
+                ev = self.adata.uns["pca"]["variance"]
+                self.s = np.sqrt(ev * (self.adata.shape[0] - 1))
+                self.U = self.adata.obsm['X_pca'] / self.s[np.newaxis, :]
+                # np.sum(np.abs(u**2), axis=0) # Check all approx 1
+                # TODO: alternatively use X_pca from harmony (instead of U*s)
 
     def _setup_covariate_PC_comparison(self):
         # Prep for covariate selection:
@@ -253,24 +256,35 @@ class modules_core(object):
         Calculates either raw or estimated, using the SVD and selected PCs.
         Also estimates the SD for the estimated correlation by bootstrap
         """
-        # Correlation:
-        # TODO: Should both corr be named the same?
+        adjacency = None
         if raw:
             # Raw correlation, centered or not:
             corr = calculate_correlation(self.adata.X, center=center)
         elif robust_se:
+            # Adjacency from robust_se
             from .robust_se import robust_se_default
             # TODO: add function wrapper that handles indices and power!
-            # Use the robust SE
-            # Use X_pca and PCs.T
-            corr = robust_se_default(U=self.U, V=self.V, B=None)
-            # corr = _robust_se(self.V, self.V,
-            #                   lamb=1e-10, t_cutoff=6.5, abs_t=True)
+            # TODO: allow using harmony instead of PCA
+            # TODO: Separate out the robust_se from the batch correction
+            t_cutoff = 35
+            adjacency = robust_se_default(
+                U=self.U @ np.diag(self.s), V=self.V, B=None,
+                t_cutoff=t_cutoff, abs_t=True)
+
+            # Average it with its transpose to get symmetric adjacency:
+            adjacency = (adjacency + adjacency.T) / 2
+            adjacency.data = np.where(adjacency.data < t_cutoff,
+                                      0, adjacency.data)
+            adjacency = sparse.csr_matrix(adjacency)
+
+            # Correlation estimate:
+            corr = calculate_correlation_estimate(
+                self.U, self.s, self.V, power=0, indices=indices)
         else:
             # Estimate correlation, with a subset of PCs:
             corr = calculate_correlation_estimate(
                 self.U, self.s, self.V, power=power, indices=indices)
-        return(corr)
+        return(corr, adjacency)
 
     def _calculate_correlation_estimate_sd(self, indices=None, power=0):
         # Estimate the std. deviation of the transformed correlation estimate
@@ -366,7 +380,7 @@ class modules_core(object):
         """
         # 4. Calculate the correlation:
         robust_se = (method == 'robust_se')
-        corr = self._calculate_correlation(
+        corr, adjacency = self._calculate_correlation(
             indices=indices, power=power, raw=raw, robust_se=robust_se)
         # sd calculation if needed, but robust_se is highly preferable:
         if method == 'sd' and not raw:
@@ -378,7 +392,8 @@ class modules_core(object):
 
         # 5. Threshold the correlation using adjacency object:
         adj = adjacency_matrix(
-            corr=corr, corr_sd=corr_sd, method=method,
+            corr=corr, adjacency=adjacency,
+            corr_sd=corr_sd, method=method,
             labels=self.genes, margin=self.margin,
             **kwargs)
 
@@ -478,7 +493,8 @@ class modules_core(object):
             ind = np.arange(k)
             graph_id = 'test_k' + str(k)
             # Build the graph - don't layout, but get modules:
-            corr_subset = self._calculate_correlation(indices=ind, power=power)
+            corr_subset, _ = self._calculate_correlation(
+                indices=ind, power=power)
             # TODO: MAKE ADJACENCY INSTEAD Here
             raise NotImplementedError
             try:

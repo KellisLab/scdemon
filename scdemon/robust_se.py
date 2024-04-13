@@ -1,10 +1,10 @@
 import numpy as np
-import scipy.sparse
+from scipy import sparse
 
 
 #from .utils import ProgressManager, _interrupt_checker
 
-def _robust_se(U:np.ndarray, V:np.ndarray, lamb:float=100, t_cutoff:float=6.5, abs_t:bool=False) -> scipy.sparse.csc_matrix:
+def _robust_se(U:np.ndarray, V:np.ndarray, lamb:float=100, t_cutoff:float=6.5, abs_t:bool=False) -> sparse.csc_matrix:
     from . import _core as core
     if U.dtype == np.float32 and V.dtype == np.float32:
         return core.py_robust_se_ff(U, V, lamb, t_cutoff, abs_t)
@@ -41,7 +41,7 @@ def robust_prepare(U:np.ndarray, V:np.ndarray, B=None, n_components:int=None, mi
     else:
         return None, V1, ~bad_flag
 
-def robust_se_default(U, V, B=None, t_cutoff:float=None, abs_t:bool=False, lamb:float=100., nominal_p_cutoff:float=0.05, n_components:int=None, min_norm:float=1e-5) -> scipy.sparse.csc_matrix:
+def robust_se_default(U, V, B=None, t_cutoff:float=None, abs_t:bool=False, lamb:float=100., nominal_p_cutoff:float=0.05, n_components:int=None, min_norm:float=1e-5) -> sparse.csc_matrix:
     """
     U: U from SVD
     V: V\Sigma from SVD
@@ -56,8 +56,8 @@ def robust_se_default(U, V, B=None, t_cutoff:float=None, abs_t:bool=False, lamb:
                                      max(U.shape[0] - V.shape[1] - 2, 1))
     S = _robust_se(U, V, t_cutoff=t_cutoff, abs_t=abs_t, lamb=lamb)
     I = np.ravel(np.where(var_flag))
-    trans = scipy.sparse.csr_matrix((np.ones_like(I), (I, np.arange(len(I)))),
-                                    shape=(len(var_flag), S.shape[0]))
+    trans = sparse.csr_matrix((np.ones_like(I), (I, np.arange(len(I)))),
+                              shape=(len(var_flag), S.shape[0]))
     return trans.dot(S).dot(trans.T)
 
 

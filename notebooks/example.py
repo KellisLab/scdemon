@@ -43,12 +43,8 @@ mod = sm.modules_core(adata,
                       svd_k=max_k, filter_expr=0.05)
 mod.setup()  # Setup the object
 
-from scdemon.robust_se import robust_se_default
-corr = robust_se_default(mod.U, mod.V, t_cutoff=0)
-
-
 # For testing graph construction:
-mod.make_graph('rse', method='robust_se')
+# mod.make_graph('rse', method='robust_se')
 # mod.make_graph('merge', multigraph=True, power=[0,.5,1])
 # mod.make_graph('raw', raw=True)
 # mod.make_graph('subset', filter_covariate="leiden")

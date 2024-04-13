@@ -26,6 +26,7 @@ class adjacency_matrix(object):
     def __init__(
         self,
         corr,
+        adjacency=None,
         method='bivariate',
         corr_sd=None,
         labels=None,
@@ -41,6 +42,7 @@ class adjacency_matrix(object):
     ):
         """Initialize adjacency matrix class."""
         self.corr = corr
+        self.adjacency = adjacency
         self.method = method
         self.corr_sd = corr_sd  # Estimated sd for each pair
         self.labels = labels
@@ -57,24 +59,18 @@ class adjacency_matrix(object):
         self.knn_k = knn_k
         self.scale = scale
         self.degree_cutoff = degree_cutoff
-        self.adjacency = None
         logging.debug("Margin: " + str(self.margin.shape))
         logging.debug("Corr: " + str(self.corr.shape))
 
         # Create adjacency matrix directly with constructor:
+        # Also prunes adjacency, run once.
         self._create_adjacency_matrix()
-
-    def get_adjacency(self):
-        """Get the adjacency matrix and the final kept labels."""
-        if self.adjacency is None:
-            self._create_adjacency_matrix()
-
-        return(self.adjacency, self.labels, self.indices)
 
     def _create_adjacency_matrix(self):
         """Threshold + prune correlation to create adjacency matrix."""
         # Threshold the correlation matrix to get the adjacency
-        self.adjacency = self._threshold_correlation_matrix()
+        if self.adjacency is None:
+            self.adjacency = self._threshold_correlation_matrix()
 
         # Full and mostly empty adjacency, for multiplexing graphs:
         self.full_adjacency = self.adjacency
@@ -82,6 +78,10 @@ class adjacency_matrix(object):
 
         # Prune adjacency matrix:
         self._prune_adjacency()
+
+    def get_adjacency(self):
+        """Get the adjacency matrix and the final kept labels."""
+        return(self.adjacency, self.labels, self.indices)
 
     def _threshold_correlation_matrix(self):
         """Threshold correlation to get adjacency matrix."""
@@ -101,8 +101,6 @@ class adjacency_matrix(object):
         elif self.method == 'sd':
             adjacency = adj_from_sd_est(
                 self.corr, self.corr_sd, self.margin, z=self.z)
-        elif self.method == 'robust_se':
-            adjacency = self.corr # If already thresholded
         else:
             raise ValueError(
                 "Method %s not in (cutoff, bivariate, sd, robust_se)" %
