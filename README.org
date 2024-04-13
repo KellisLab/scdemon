@@ -48,7 +48,7 @@ BigCLAM/Leiden
 
 ***  Minimal conda environment
 #+BEGIN_SRC bash
-mamba create -n scdemonpy conda-forge::gxx_linux-64 conda-forge::gcc_linux-64 conda-forge::gfortran_linux-64 conda-forge::eigen conda-forge::gsl conda-forge::anndata conda-forge::tqdm conda-forge::pybind11 conda-forge::pip conda-forge::igraph conda-forge::umap-learn
+mamba create -n scdemonpy conda-forge::gxx_linux-64 conda-forge::gcc_linux-64 conda-forge::gfortran_linux-64 conda-forge::eigen conda-forge::gsl conda-forge::anndata conda-forge::tqdm conda-forge::pybind11 conda-forge::pip conda-forge::igraph conda-forge::umap-learn conda::scikit-build
 mamba create -n scdemonr conda-forge::gxx_linux-64 conda-forge::gcc_linux-64 conda-forge::gfortran_linux-64 conda-forge::r-devtools conda-forge::r-rcppeigen conda-forge::r-rcppprogress conda-forge::gsl bioconda::bioconductor-rhdf5 conda-forge::r-igraph conda-forge::r-uwot conda-forge::r-irlba
 #+END_SRC
 ** large to-dos (ordered by importance)

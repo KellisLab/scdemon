@@ -259,11 +259,13 @@ class modules_core(object):
             # Raw correlation, centered or not:
             corr = calculate_correlation(self.adata.X, center=center)
         elif robust_se:
-            from .robust_se import _robust_se
+            from .robust_se import robust_se_default
             # TODO: add function wrapper that handles indices and power!
             # Use the robust SE
-            corr = _robust_se(self.V, self.V,
-                              lamb=1e-10, t_cutoff=6.5, abs_t=True)
+            # Use X_pca and PCs.T
+            corr = robust_se_default(U=self.U, V=self.V, B=None)
+            # corr = _robust_se(self.V, self.V,
+            #                   lamb=1e-10, t_cutoff=6.5, abs_t=True)
         else:
             # Estimate correlation, with a subset of PCs:
             corr = calculate_correlation_estimate(
