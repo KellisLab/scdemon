@@ -4,137 +4,91 @@
 #include <Eigen/Dense>
 #include <Eigen/SparseCore>
 
-//#if defined(_USE_GSL)
-// #include <gsl/gsl_statistics.h>
-// #include <gsl/gsl_cdf.h>
-//#endif
 
 #include <algorithm>
 #include <random>
 #include <chrono>
 #include <numeric>
+#include <limits>
 #include <vector>
 #include "implprogress.hpp"
-/*
- * Reminder: Y has many columns, X should have 1.
- */
-template<typename TX, typename TY>
-Eigen::MatrixXd ols_beta(const Eigen::MatrixBase<TX> &X, const Eigen::MatrixBase<TY> &Y, double lambda)
+
+template<typename TV>
+Eigen::Vector<typename TV::Scalar, Eigen::Dynamic>
+intra_ols_beta(const Eigen::MatrixBase<TV> &V,
+	       const Eigen::DiagonalMatrix<typename TV::Scalar, Eigen::Dynamic> &tuuituu,
+	       Eigen::Index i)
 {
-  	if (lambda > 0) {
-        	Eigen::MatrixXd I = Eigen::MatrixXd::Identity(X.cols(), X.cols());
-                Eigen::MatrixXd A = (X.transpose() * X + lambda * I).eval();
-                Eigen::JacobiSVD<Eigen::MatrixXd> svd(A, Eigen::ComputeThinU | Eigen::ComputeThinV);
-                return svd.solve(X.transpose() * Y);
-        } else {
-        	return X.completeOrthogonalDecomposition().solve(Y).eval();
-        }
+	Eigen::Vector<typename TV::Scalar, Eigen::Dynamic> beta = (V.transpose() * tuuituu * V.col(i));
+	beta[i] = 0.; // Set to zero to make equivalent to subsetting V, but keeping dim.
+	return beta;
 }
 
-template<typename TX, typename TY, typename TB>
-Eigen::MatrixXd ols_resid(const Eigen::MatrixBase<TX> &X,
-			  const Eigen::MatrixBase<TY> &Y,
-			  const Eigen::MatrixBase<TB> &beta) {
-	return (Y - X * beta).eval();
+template<typename TU, typename TV>
+Eigen::Vector<typename TU::Scalar, Eigen::Dynamic>
+intra_ols_resid(const Eigen::MatrixBase<TU> &U,
+		const Eigen::MatrixBase<TV> &V,
+		const Eigen::Vector<typename TV::Scalar, Eigen::Dynamic> &beta,
+		Eigen::Index i)
+{
+	Eigen::Vector<typename TU::Scalar, Eigen::Dynamic> res_pc = (V.col(i) - V * beta).eval().template cast<typename TU::Scalar>();
+	return U * res_pc;
+}
+template<typename TU>
+Eigen::MatrixXf intra_ols_norm_mat(const Eigen::DiagonalMatrix<float, Eigen::Dynamic> &tuui,
+				   const Eigen::MatrixBase<TU> &U,
+				   const Eigen::Vector<typename TU::Scalar, Eigen::Dynamic> &resid)
+{
+	// Using float for QR for caching/speed + space
+	Eigen::Index n = U.cols();
+	Eigen::MatrixXf pre_qr = (resid.asDiagonal() * U).template cast<float>().eval();
+	// Use in-place QR to speed up
+	Eigen::HouseholderQR<Eigen::Ref<Eigen::MatrixXf> > qr(pre_qr);
+	Eigen::MatrixXf R = qr.matrixQR().topLeftCorner(n, n).triangularView<Eigen::Upper>();
+	return R * tuui;
 }
 
-/*
- * Y must be U1^+ U1) 
- */
-template<typename TX, typename TY>
-Eigen::ArrayXd robust_se_X(const Eigen::MatrixBase<TX> &Xmat,
-			   const Eigen::MatrixBase<TY> &Y,
-			   double lambda=1e-10,
-			   double epsilon=1e-300)
+template<typename TV>
+Eigen::Array<typename TV::Scalar, Eigen::Dynamic, 1> intra_ols_se(const Eigen::MatrixBase<TV> &V,
+								  const Eigen::MatrixXf &shared,
+								  float epsilon=std::numeric_limits<float>::epsilon())
 {
-	Eigen::VectorXd X = Xmat.col(0).eval();
-	double X_sqnorm = std::max(X.squaredNorm(), epsilon);
-	// X pseudoinverse is X' / squared_norm
-	Eigen::VectorXd beta = (X.transpose() * Y).eval() / (X_sqnorm + lambda);
-	Eigen::VectorXd var = ((X.transpose() / X_sqnorm).cwiseAbs2() * (Y - X * beta.transpose()).cwiseAbs2()).eval();
-	Eigen::ArrayXd tval = beta.array();
-	return tval * var.cwiseMax(epsilon).array().rsqrt();
+	// shared should be same dimension of R from qr(diag(resid) * U)
+	Eigen::Matrix<typename TV::Scalar, Eigen::Dynamic, Eigen::Dynamic> shared_casted = shared.template cast<typename TV::Scalar>();
+	Eigen::Vector<typename TV::Scalar, Eigen::Dynamic> se = (shared_casted * V).colwise().norm().eval();
+	return se.cwiseMax(epsilon).array();
 }
-
-/* Each column of X versus Y */
-template<typename TX, typename TY>
-Eigen::ArrayXd robust_se_Y(const Eigen::MatrixBase<TX> &X,
-			   const Eigen::MatrixBase<TY> &Ymat,
-			   double lambda=1e-10,
-			   double epsilon=1e-300)
+template<typename TU, typename TV>
+Eigen::SparseMatrix<float> intra_robust_se(const Eigen::MatrixBase<TU> &U,
+					   const Eigen::MatrixBase<TV> &V,
+					   float lambda=100,
+					   float t_cutoff=6.5,
+					   bool abs_cutoff=false)
 {
-  
-	Eigen::VectorXd Y = Ymat.col(0);
-        Eigen::ArrayXd X_sqnorm = X.colwise().squaredNorm().cwiseMax(epsilon).array();
-	// X pseudoinverse is X' / squared_norm
-	Eigen::VectorXd beta = ((X.transpose() * Y).array() / (X_sqnorm + lambda)).matrix().eval();
-	Eigen::MatrixXd res2 = X * beta.asDiagonal();
-	res2.colwise() -= Y;
-	res2 = res2.cwiseAbs2();
-	//Eigen::MatrixXd res2 = (Y - (X * beta.asDiagonal()).colwise()).cwiseAbs2().eval();
-	Eigen::MatrixXd pinv2 = (X * (1/X_sqnorm).matrix().asDiagonal()).cwiseAbs2().eval();
-	Eigen::VectorXd var = (pinv2.array() * res2.array()).colwise().sum();
-	//Eigen::VectorXd var = ((X * (1/X_sqnorm).matrix().asDiagonal()).transpose().cwiseAbs2() * (Y - X * beta.asDiagonal()).cwiseAbs2()).eval();
-	Eigen::ArrayXd tval = beta.array();
-	return tval * var.cwiseMax(epsilon).array().rsqrt();
-}
-template<typename TY, typename TL>
-Eigen::VectorXd ols_beta_L(Eigen::VectorXd X, double X_sqnorm,
-                           const Eigen::MatrixBase<TY> &Y,
-                           const Eigen::ArrayBase<TL> &lambda)
-{
-  	Eigen::ArrayXd numer = (X.transpose() * Y).eval().array();
-        Eigen::ArrayXd denom = (lambda + X_sqnorm).eval();
-        Eigen::ArrayXd quot = numer / denom;
-        return quot.matrix();
-}
-// template<typename TX, typename TY>
-// Eigen::MatrixXd robust_se_full(const Eigen::MatrixBase<TX> &X,
-// 			       const Eigen::MatrixBase<TY> &Ymat,
-// 			       double lambda=1e-10)
-// {
-  
-// }
-
-template<typename TX, typename TY, typename TL>
-Eigen::ArrayXd robust_se_L(const Eigen::MatrixBase<TX> &Xmat,
-			   const Eigen::MatrixBase<TY> &Y, /* V\Sigma?? */
-                           const Eigen::ArrayBase<TL> &lambda,
-			   double epsilon=1e-300)
-{
-	Eigen::VectorXd X = Xmat.col(0).eval();
-	double X_sqnorm = std::max(X.squaredNorm(), epsilon);
-        Eigen::VectorXd beta = ols_beta_L(X, X_sqnorm, Y, lambda);
-	// X pseudoinverse is X' / squared_norm
-	Eigen::VectorXd var = ((X.transpose() / X_sqnorm).cwiseAbs2() * (Y - X * beta.transpose()).cwiseAbs2()).eval();
-	Eigen::ArrayXd tval = beta.array();
-	return tval * var.cwiseMax(epsilon).array().rsqrt();
-}
-template<typename TX, typename TY>
-Eigen::SparseMatrix<double> robust_se(const Eigen::MatrixBase<TX> &X,
-				      const Eigen::MatrixBase<TY> &Y,
-				      double lambda=1e-10,
-				      double epsilon=1e-300,
-				      double t_cutoff=6.5,
-				      bool abs_cutoff=false)
-{
-	Eigen::SparseMatrix<double> M(Y.cols(), X.cols());
-	ImplProgress p(X.cols());
+	const Eigen::VectorXf sigma_2 = U.colwise().squaredNorm().template cast<float>().eval();
+	const Eigen::ArrayXf sigma_2_inv = (1. / (sigma_2.array() + lambda*lambda));
+	const Eigen::DiagonalMatrix<float, Eigen::Dynamic> tuui = sigma_2_inv.matrix().asDiagonal();
+	const Eigen::DiagonalMatrix<typename TV::Scalar, Eigen::Dynamic> tuuituu = (sigma_2.array() / (sigma_2.array() + lambda*lambda)).matrix().template cast<typename TV::Scalar>().asDiagonal();
+	Eigen::SparseMatrix<float> M(V.cols(), V.cols());
+	ImplProgress p(V.cols());
 #if defined(_OPENMP)
 #pragma omp parallel 
 #endif
 	{
-		Eigen::SparseMatrix<double> local_mat(Y.cols(), X.cols());
+		Eigen::SparseMatrix<float> local_mat(V.cols(), V.cols());
 #if defined(_OPENMP)
 #pragma omp for nowait
 #endif
-		for (int i = 0; i < X.cols(); i++) {
+		for (Eigen::Index i = 0; i < V.cols(); i++) {
 			if (!p.check_abort()) {
-		        	p.increment();
-				Eigen::ArrayXd tv = robust_se_X(X.col(i), Y, lambda, epsilon);
+				p.increment();
+				Eigen::Vector<typename TV::Scalar, Eigen::Dynamic> beta = intra_ols_beta(V, tuuituu, i);
+				Eigen::MatrixXf shared = intra_ols_norm_mat(tuui, U, intra_ols_resid(U, V, beta, i));
+				Eigen::Array<typename TV::Scalar, Eigen::Dynamic, 1> se = intra_ols_se(V, shared);
+				Eigen::Array<typename TV::Scalar, Eigen::Dynamic, 1> tv = beta.array() / se;
 				for (int j = 0; j < tv.size(); j++) {
 					if (abs_cutoff && (t_cutoff <= -tv[j])) {
-						local_mat.insert(j, i) = -tv[j];
+						local_mat.insert(j, i) = tv[j];
 					} else if (tv[j] >= t_cutoff) {
 						local_mat.insert(j, i) = tv[j];
 					}
@@ -150,7 +104,7 @@ Eigen::SparseMatrix<double> robust_se(const Eigen::MatrixBase<TX> &X,
 		M.makeCompressed();
 		return M;
 	} else {
-		Eigen::SparseMatrix<double> Mbad(Y.cols(), X.cols());
+		Eigen::SparseMatrix<float> Mbad(V.cols(), V.cols());
 		return Mbad;
 	}
 }

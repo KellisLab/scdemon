@@ -9,6 +9,9 @@
 #include <iostream>
 #endif
 
+#ifndef BAR_WIDTH
+#define BAR_WIDTH 60
+#endif
 class ImplProgress
 {
 private:
@@ -16,11 +19,11 @@ private:
 	std::unique_ptr<Progress> p;
 #else
 	unsigned long total, current, last;
- 	bool aborted;
+	bool aborted;
 #endif
 public:
 #if defined(Rcpp_hpp)
-	ImplProgress(unsigned long count) : p(std::make_unique<Progress>(count, true))  {}
+	ImplProgress(unsigned long count) : p(std::make_unique<Progress>(count, true))	{}
 	~ImplProgress() = default;
 #else
 	ImplProgress(unsigned long count) : total(count), current(0), last(0), aborted(false) {}
@@ -48,10 +51,17 @@ public:
 		double cur_percent = current / total;
 		if (cur_percent >= 0.01 + last_percent) {
 			int pct = 100 * cur_percent;
-			std::cout << pct << "%" << std::endl;
+			int pos = cur_percent * BAR_WIDTH;
+			std::string out(BAR_WIDTH, ' ');
+			for (int i = 0; i < BAR_WIDTH; i++) {
+				if (i < pos) { out[i] = '='; }
+				else if (i == pos) { out[i] = '>'; }
+			}
+			std::cout << "[" << out << "] " << pct << "%\r";
+			std::cout.flush();
 			last = current;
 		}
-#endif  
+#endif	
 	}
 	void increment(unsigned long count=1) {
 #if defined(Rcpp_hpp)
