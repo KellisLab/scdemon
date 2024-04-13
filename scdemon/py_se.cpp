@@ -4,51 +4,19 @@
 
 namespace py = pybind11;
 
-
-// todo fix by using .cast<float>() in se.hpp
-//template<typename TY, typename TU, typename TB>
-Eigen::ArrayXd py_robust_se_X(const py::EigenDRef<Eigen::MatrixXd> &X,
-			      const py::EigenDRef<Eigen::MatrixXd> &Y,
-                              double lambda=1e-10)
+template<typename TU, typename TV>
+Eigen::SparseMatrix<float> py_robust_se(const py::EigenDRef<TU> &U,
+					const py::EigenDRef<TV> &V,
+					float lambda,
+					float t_cutoff,
+					bool abs_cutoff) 
 {
-	return robust_se_X(X, Y, lambda, 1e-300);
-}
-
-Eigen::SparseMatrix<double> py_robust_se(const py::EigenDRef<Eigen::MatrixXd> &X,
-					 const py::EigenDRef<Eigen::MatrixXd> &Y,
-                                         double lambda=1e-10,
-					 double t_cutoff=6.5,
-					 bool abs_t=false)
-{
-	return robust_se(X, Y, lambda, 1e-300, t_cutoff, abs_t);
-}
-
-Eigen::MatrixXd py_ols_beta(const py::EigenDRef<Eigen::MatrixXd> &X,
-                            const py::EigenDRef<Eigen::MatrixXd> &Y,
-                            double lambda
-                            )
-{
-        return ols_beta(X, Y, lambda);
-}
-
-Eigen::MatrixXd py_ols_resid(const py::EigenDRef<Eigen::MatrixXd> &X,
-                             const py::EigenDRef<Eigen::MatrixXd> &Y,
-                             const py::EigenDRef<Eigen::MatrixXd> &beta)
-{
-	return ols_resid(X, Y, beta);
+	return intra_robust_se(U, V, lambda, t_cutoff, abs_cutoff);
 }
 
 PYBIND11_MODULE(_core, m) {
-	m.def("py_ols_beta", &py_ols_beta);
-    m.def("py_ols_resid", &py_ols_resid);
-	m.def("py_robust_se_X", &py_robust_se_X);
-	m.def("py_robust_se", &py_robust_se);
-	// <Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXd>);
-	// m.def("robust_se_X_ddf", &py_robust_se_X<Eigen::MatrixXd, Eigen::MatrixXd, Eigen::MatrixXf>);
-	// m.def("robust_se_X_dfd", &py_robust_se_X<Eigen::MatrixXd, Eigen::MatrixXf, Eigen::MatrixXd>);
-	// m.def("robust_se_X_dff", &py_robust_se_X<Eigen::MatrixXd, Eigen::MatrixXf, Eigen::MatrixXf>);
-	// m.def("robust_se_X_fdd", &py_robust_se_X<Eigen::MatrixXf, Eigen::MatrixXd, Eigen::MatrixXd>);
-	// m.def("robust_se_X_fdf", &py_robust_se_X<Eigen::MatrixXf, Eigen::MatrixXd, Eigen::MatrixXf>);
-	// m.def("robust_se_X_ffd", &py_robust_se_X<Eigen::MatrixXf, Eigen::MatrixXf, Eigen::MatrixXd>);
-	// m.def("robust_se_X_fff", &py_robust_se_X<Eigen::MatrixXf, Eigen::MatrixXf, Eigen::MatrixXf>);  
+	m.def("py_robust_se_ff", &py_robust_se<Eigen::MatrixXf, Eigen::MatrixXf>);
+	m.def("py_robust_se_df", &py_robust_se<Eigen::MatrixXd, Eigen::MatrixXf>);
+	m.def("py_robust_se_fd", &py_robust_se<Eigen::MatrixXf, Eigen::MatrixXd>);
+	m.def("py_robust_se_dd", &py_robust_se<Eigen::MatrixXd, Eigen::MatrixXd>);
 }
