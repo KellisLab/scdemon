@@ -249,7 +249,7 @@ class modules_core(object):
     # TODO: allow passing abs_t and t_cutoff to this function
     def _calculate_correlation(self,
                                indices=None, center=False, power=0,
-                               raw=False, robust_se=False):
+                               raw=False, robust_se=False, t_cutoff=6.5):
         """
         Calculate the correlation between the genes.
         ---
@@ -266,7 +266,6 @@ class modules_core(object):
             # TODO: add function wrapper that handles indices and power!
             # TODO: allow using harmony instead of PCA
             # TODO: Separate out the robust_se from the batch correction
-            t_cutoff = 35
             adjacency = robust_se_default(
                 U=self.U @ np.diag(self.s), V=self.V, B=None,
                 t_cutoff=t_cutoff, abs_t=True)
@@ -335,6 +334,7 @@ class modules_core(object):
                            full_graph_only=False,
                            keep_all_z=False,
                            layout=True,
+                           t_cutoff=6.5,
                            **kwargs):
         # 3. Select which PCs to keep:
         indices = self._select_PCs(filter_covariate=filter_covariate)
@@ -344,8 +344,8 @@ class modules_core(object):
             # Options for constructing correlation
             indices=indices, power=power, raw=raw,
             # Options for thresholding methods:
-            method=method,
-            **kwargs)
+            method=method, t_cutoff=t_cutoff,
+            **kwargs) # TODO: how to separate out kwargs for this vs. below
 
         # Make graph with adjacency instead of correlation:
         self._make_single_graph_object(graph_id, corr=corr, adj=adj, **kwargs)
@@ -369,7 +369,7 @@ class modules_core(object):
                                     # Options for correlation:
                                     indices=None, power=0, raw=False,
                                     # Options for thresholding method:
-                                    method='bivariate',
+                                    method='bivariate', t_cutoff=6.5,
                                     # TODO: Add adjacency options here:
                                     **kwargs):
         """
@@ -381,7 +381,8 @@ class modules_core(object):
         # 4. Calculate the correlation:
         robust_se = (method == 'robust_se')
         corr, adjacency = self._calculate_correlation(
-            indices=indices, power=power, raw=raw, robust_se=robust_se)
+            indices=indices, power=power, raw=raw,
+            robust_se=robust_se, t_cutoff=t_cutoff)
         # sd calculation if needed, but robust_se is highly preferable:
         if method == 'sd' and not raw:
             # TODO: update function to use correct indices and power!
@@ -404,9 +405,8 @@ class modules_core(object):
     # TODO: Simplify inheritance of kwargs params:
     def _make_single_graph_object(self, graph_id, corr,
                                   adj=None, graph=None, # Either one needed
-                                  edge_weight=None,
-                                  min_size=4,
-                                  layout_method="fr"):
+                                  edge_weight=None, min_size=4,
+                                  layout_method="fr", **kwargs):
         self.graphs[graph_id] = gene_graph(corr, adj=adj,
                                            graph=graph,
                                            genes=self.genes,
