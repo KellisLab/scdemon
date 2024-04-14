@@ -110,32 +110,20 @@ robust_se_L <- function(cname, Y, lambda) {
 #' @export
 #' @useDynLib scdemon
 #' @importFrom Rcpp evalCpp
-robust_se_t.default <- function(V1, V2,
+robust_se_t.default <- function(Us, V,
                                 nominal_p_cutoff=0.05,
-                                lambda=1e-10,
+                                lambda=100,
                                 abs_t=FALSE, dof=NULL,
                                 t_cutoff=NULL) {
   require(Matrix)
-  if (is.null(V2)) V2 <- V1 
   if (is.null(t_cutoff)) {
-    if (is.null(dof)) {
-      stopifnot(is.integer(attr(V1, "dof")))
-      stopifnot(is.integer(attr(V2, "dof")))
-      dof <- mean(c(attr(V1, "dof"), attr(V2, "dof")))
-    }
     ## should be around 6.5 for most snRNA-seq datasets
-    t_cutoff <- qt(min(nominal_p_cutoff / (ncol(V1) * ncol(V2)), 1),
-                   dof,
+    t_cutoff <- qt(min(nominal_p_cutoff / (ncol(V) * ncol(V)), 1),
+                   max(nrow(Us) - ncol(V), 4),
                    lower.tail=FALSE)
   }
-  comm <- intersect(colnames(V2), colnames(V1))
-  M <- r_robust_se(V1, V2, lambda, t_cutoff, abs_t)
-  dimnames(M) <- list(colnames(V2), colnames(V1))
-  if (!is.null(dof)) attr(M, "dof") <- dof
-  if (length(comm) > 0) { 
-    M[cbind(match(colnames(V2), comm),
-            match(colnames(V1), comm))] <- 0
-  }
+  M <- r_robust_se(Us, V, lambda, t_cutoff, abs_t)
+  dimnames(M) <- list(colnames(V), colnames(V))
   return(Matrix::t(Matrix::drop0(M)))
 }
 

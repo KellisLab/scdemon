@@ -47,8 +47,11 @@ public:
 	void display()
 	{
 #if !defined(Rcpp_hpp)
-		double last_percent = last / total;
-		double cur_percent = current / total;
+		double last_percent = (double)last / total;
+		double cur_percent = (double)current / total;
+#if defined(_OPENMP)
+#pragma omp critical
+#endif
 		if (cur_percent >= 0.01 + last_percent) {
 			int pct = 100 * cur_percent;
 			int pos = cur_percent * BAR_WIDTH;
@@ -57,8 +60,8 @@ public:
 				if (i < pos) { out[i] = '='; }
 				else if (i == pos) { out[i] = '>'; }
 			}
-			std::cout << "[" << out << "] " << pct << "%\r";
-			std::cout.flush();
+			std::cerr << "[" << out << "] " << pct << "%\r";
+			std::cerr.flush();
 			last = current;
 		}
 #endif	
