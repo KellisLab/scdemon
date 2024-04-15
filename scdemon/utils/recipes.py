@@ -24,6 +24,6 @@ def recipe_annotate(adata):
 def recipe_full(adata, preprocess=True, annotate=True,
                 min_cells=3, min_genes=100):
     if preprocess:
-        recipe_preprocess(adata)
+        recipe_preprocess(adata, min_cells=min_cells, min_genes=min_genes)
     if annotate:
         recipe_annotate(adata)

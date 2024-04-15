@@ -152,7 +152,7 @@ class modules_core(object):
         else:
             return True
 
-    def _calculate_PCA(self):
+    def _calculate_PCA(self, center=False):
         """
         Calculate PCA components U, s, V if they are not already computed.
         ---
@@ -166,7 +166,7 @@ class modules_core(object):
                 # arpack / scipy / sklearn?
                 logging.info("Calculating PCA of X with fbpca")
                 self.U, self.s, self.V = fbpca.pca(
-                    self.X, k=self.k, raw=not self.center)
+                    self.X, k=self.k, raw=not center)
             else:
                 # Compute PCA with scanpy options if not using fbpca
                 if "X_pca" not in self.adata.obsm.keys():
