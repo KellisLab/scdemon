@@ -56,11 +56,11 @@ def robust_se_default(U, V, *, B=None, t_cutoff:float=None, abs_t:bool=False, mi
                                      U.shape[0] - U.shape[1])
     S = _robust_se(U, V, t_cutoff=t_cutoff, abs_t=abs_t, min_cor=min_cor)
     I = np.ravel(np.where(var_flag))
-    if len(I) != len(V.shape[1]):
+    if len(I) != V.shape[1]:
         trans = sparse.csr_matrix((np.ones_like(I), (I, np.arange(len(I)))),
                                   shape=(len(var_flag), S.shape[0]))
         return trans.dot(S).dot(trans.T)
     else:
-        return trans
+        return S
 
 
