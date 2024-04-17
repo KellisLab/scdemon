@@ -101,8 +101,8 @@ std::pair<float, std::vector<Eigen::Index> > intra_ols_lambda(const Eigen::Array
         Eigen::Array<float, TV::RowsAtCompileTime, 1> res_pc_S = sigma * res_pc.array();
         double beta_norm2 = beta.squaredNorm();
         double lambda = res_pc_S.matrix().squaredNorm() / std::max(beta_norm2, 1e-100);
-	lambda = std::pow(lambda, lambda_pow);
-        lambda *= (V.cols() - 1.) / edof;
+	lambda = lambda / edof;
+        lambda *= std::pow(V.cols() - 1., lambda_pow);
         std::vector<Eigen::Index> good;
         for (Eigen::Index j = 0; j < V.cols(); j++) {
                 if (abs_cutoff && (beta(j) < V_colnorm(j) * V_colnorm(i) * min_cor * -1)) {
