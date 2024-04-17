@@ -52,7 +52,7 @@ public:
 #if defined(_OPENMP)
 #pragma omp critical
 #endif
-		if (cur_percent >= 0.01 + last_percent) {
+		if (last==0 || (cur_percent >= 0.01 + last_percent)) {
 			int pct = 100 * cur_percent;
 			int pos = cur_percent * BAR_WIDTH;
 			std::string out(BAR_WIDTH, ' ');

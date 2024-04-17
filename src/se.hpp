@@ -11,6 +11,7 @@
 #include <numeric>
 #include <limits>
 #include <vector>
+#include <cmath>
 #include "implprogress.hpp"
 
 /*
@@ -80,7 +81,7 @@ intra_ols_se(const Eigen::MatrixBase<TV> &V,
              float epsilon=std::numeric_limits<float>::epsilon())
 {
         // shared should be same dimension of R from qr(diag(resid) * U)
-        Eigen::Matrix<typename TV::Scalar, TV::ColsAtCompileTime, TV::ColsAtCompileTime> shared_casted = shared.template cast<typename TV::Scalar>();
+	Eigen::Matrix<typename TV::Scalar, TV::RowsAtCompileTime, TV::RowsAtCompileTime> shared_casted = shared.template cast<typename TV::Scalar>();
         Eigen::Vector<typename TV::Scalar, TV::ColsAtCompileTime> se = (shared_casted * V).colwise().norm().eval();
         return se.cwiseMax(epsilon).array();
 }
@@ -91,7 +92,8 @@ std::pair<float, std::vector<Eigen::Index> > intra_ols_lambda(const Eigen::Array
                                               double edof,
                                               const Eigen::Array<float, TV::ColsAtCompileTime, 1> V_colnorm,
                                               float min_cor=0,
-                                              bool abs_cutoff=false)
+							      bool abs_cutoff=false,
+							      double lambda_pow=1.)
 {
         Eigen::Vector<typename TV::Scalar, TV::ColsAtCompileTime> beta = V.transpose() * V.col(i);
         beta[i] = 0;
@@ -99,6 +101,7 @@ std::pair<float, std::vector<Eigen::Index> > intra_ols_lambda(const Eigen::Array
         Eigen::Array<float, TV::RowsAtCompileTime, 1> res_pc_S = sigma * res_pc.array();
         double beta_norm2 = beta.squaredNorm();
         double lambda = res_pc_S.matrix().squaredNorm() / std::max(beta_norm2, 1e-100);
+	lambda = std::pow(lambda, lambda_pow);
         lambda *= (V.cols() - 1.) / edof;
         std::vector<Eigen::Index> good;
         for (Eigen::Index j = 0; j < V.cols(); j++) {
@@ -116,7 +119,8 @@ Eigen::SparseMatrix<float> intra_robust_se(const Eigen::MatrixBase<TU> &U,
                                            const Eigen::MatrixBase<TV> &V,
                                            float min_cor=0,
                                            float t_cutoff=6.5,
-                                           bool abs_cutoff=false)
+                                           bool abs_cutoff=false,
+					   float lambda_pow=1.)
 {
         const Eigen::Array<float, TU::ColsAtCompileTime, 1> sigma_2 = U.colwise().squaredNorm().template cast<float>().eval().array();
         const Eigen::Array<float, TU::ColsAtCompileTime, 1> sigma_2_inv = sigma_2.inverse();
@@ -137,7 +141,7 @@ Eigen::SparseMatrix<float> intra_robust_se(const Eigen::MatrixBase<TU> &U,
                 for (Eigen::Index i = 0; i < V.cols(); i++) {
                         if (!p.check_abort()) {
                                 p.increment();
-                                std::pair<float, std::vector<Eigen::Index> > pr = intra_ols_lambda(sigma_2, V, i, U.rows() - U.cols(), V_colnorm, min_cor, abs_cutoff);
+                                std::pair<float, std::vector<Eigen::Index> > pr = intra_ols_lambda(sigma_2, V, i, U.rows() - U.cols(), V_colnorm, min_cor, abs_cutoff, lambda_pow);
                                 float i_lambda = pr.first;
                                 std::vector<Eigen::Index> good = pr.second;
                                 if (good.size() == 0) { continue; }

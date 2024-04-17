@@ -4,16 +4,16 @@ from scipy import sparse
 
 #from .utils import ProgressManager, _interrupt_checker
 
-def _robust_se(U:np.ndarray, V:np.ndarray, *, min_cor:float=0., t_cutoff:float=6.5, abs_t:bool=False) -> sparse.csc_matrix:
+def _robust_se(U:np.ndarray, V:np.ndarray, *, min_cor:float=0., t_cutoff:float=6.5, abs_t:bool=False, lambda_pow:float=1.) -> sparse.csc_matrix:
     from . import _core as core
     if U.dtype == np.float32 and V.dtype == np.float32:
-        return core.py_robust_se_ff(U, V, min_cor, t_cutoff, abs_t)
+        return core.py_robust_se_ff(U, V, min_cor, t_cutoff, abs_t, lambda_pow)
     elif U.dtype == np.float64 and V.dtype == np.float64:
-        return core.py_robust_se_dd(U, V, min_cor, t_cutoff, abs_t)
+        return core.py_robust_se_dd(U, V, min_cor, t_cutoff, abs_t, lambda_pow)
     elif U.dtype == np.float32 and V.dtype == np.float64:
-        return core.py_robust_se_fd(U, V, min_cor, t_cutoff, abs_t)
+        return core.py_robust_se_fd(U, V, min_cor, t_cutoff, abs_t, lambda_pow)
     elif U.dtype == np.float64 and V.dtype == np.float32:
-        return core.py_robust_se_df(U, V, min_cor, t_cutoff, abs_t)
+        return core.py_robust_se_df(U, V, min_cor, t_cutoff, abs_t, lambda_pow)
     else:
         raise NotImplementedError("Not implemented for numpy dtype")
 

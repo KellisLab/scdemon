@@ -9,9 +9,10 @@ Eigen::SparseMatrix<float> py_robust_se(const py::EigenDRef<TU> &U,
 					const py::EigenDRef<TV> &V,
 					float min_cor,
 					float t_cutoff,
-					bool abs_cutoff) 
+					bool abs_cutoff,
+					float lambda_pow) 
 {
-	return intra_robust_se(U, V, min_cor, t_cutoff, abs_cutoff);
+	return intra_robust_se(U, V, min_cor, t_cutoff, abs_cutoff, lambda_pow);
 }
 
 PYBIND11_MODULE(_core, m) {
