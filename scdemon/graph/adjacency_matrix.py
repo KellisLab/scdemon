@@ -103,7 +103,7 @@ class adjacency_matrix(object):
                 self.corr, self.corr_sd, self.margin, z=self.z)
         else:
             raise ValueError(
-                "Method %s not in (cutoff, bivariate, sd, robust_se)" %
+                "Method %s not in (cutoff, bivariate, sd)" %
                 self.method)
         return(adjacency)
 

@@ -65,7 +65,12 @@ def _plot_umap_grid(umat, scores, titles, plotname=None,
     for i in range(nr):
         for j in range(nc):
             k = i * nc + j
-            ax = axs[i, j]
+            if nr == 1:
+                ax = axs[j]
+            elif nc == 1:
+                ax = axs[i]
+            else:
+                ax = axs[i, j]
             if k < nplot:
                 k = k if sel is None else sel[k]
                 title = None if titles is None else titles[k]
