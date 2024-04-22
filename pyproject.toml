@@ -36,7 +36,8 @@ test = ["pytest", "pytest-cov", "statsmodels", "anndata"]
 wheel.expand-macos-universal-tags = true
 
 [tool.setuptools]
-packages = ["scdemon"]
+packages = ["scdemon", "scdemon.utils", "scdemon.plotting",
+         "scdemon.graph", "scdemon.data"]
 
 [tool.pytest.ini_options]
 python_files = "test_*.py"

@@ -9,6 +9,7 @@ Welcome to scdemon's documentation!
 .. toctree::
    usage
    example 
+   api
    :maxdepth: 2
    :caption: Contents:
 
