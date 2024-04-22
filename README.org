@@ -1,4 +1,4 @@
-* scdemon: single-cell decomposition into module networks
+* scdemon: single-cell decorrelated module networks
 ** Installation
 **** Python package:
 

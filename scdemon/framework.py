@@ -77,7 +77,14 @@ class modules_core(object):
                  use_fbpca=True,
                  cv_cutoff=0.4,
                  ):
-        """Initialize gene modules object."""
+        """
+        Initialize gene modules object.
+        ---------------
+
+        test
+        :param adata: AnnData object containing single-cell dataset
+
+        """
         # TODO: implement stand-alone matrix
         # Dataset:
         self.adata = adata
