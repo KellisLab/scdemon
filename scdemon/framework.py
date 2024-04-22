@@ -7,7 +7,7 @@ from .utils import (
     # Correlation:
     calculate_correlation,
     calculate_correlation_estimate,
-    calculate_correlation_estimate_sd
+    calculate_correlation_estimate_sd,
     calculate_svd_covar_corr, # Covariates
     # Multigraph
     make_graphlist, partition_graphlist,
@@ -76,7 +76,7 @@ class modules_core(object):
                  suffix=None,
                  # Arguments for setup:
                  seed=1,
-                 filter_expr=None,
+                 filter_expr=0.05,
                  svd_k=100, # TODO: change to k, change example code to match
                  keep_first_PC=False,
                  use_fbpca=True,

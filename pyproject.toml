@@ -1,6 +1,6 @@
-[build-system]
-requires = ["scikit-build-core>=0.3.3", "pybind11"] 
-build-backend = "scikit_build_core.build"
+# [build-system]
+# requires = ["scikit-build-core>=0.3.3"] 
+# build-backend = "scikit_build_core.build"
 # build-backend = "setuptools.build_meta"
 
 [project]
@@ -35,6 +35,8 @@ test = ["pytest", "pytest-cov", "statsmodels", "anndata"]
 [tool.scikit-build]
 wheel.expand-macos-universal-tags = true
 
+[tool.setuptools]
+packages = ["scdemon"]
 
 [tool.pytest.ini_options]
 python_files = "test_*.py"

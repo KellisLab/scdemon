@@ -58,27 +58,25 @@ adata = sc.datasets.pbmc3k()
 recipe_full(adata, preprocess=True, annotate=True)
 
 # Make the modules handling object:
-max_k = 100
-mod = sm.modules_core(adata, suffix='pbmc_example')
+mod = sm.modules_core(adata, suffix='pbmc_example', svd_k=100)
 mod.setup()
 
 # Build a gene-graph graph and learn modules:
 graph_id = 'base'
 mod.make_graph(graph_id, resolution=2.5)
 
-# Plot genes on gene-gene graph and on gene UMAP basis
+# Plot genes on the gene-gene graph and on the gene-level UMAP basis
 pl.plot_genes(mod, graph_id, attr="leiden", show_labels=True, width=16)
 pl.plot_genes(mod, graph_id, basis='umap', attr="leiden", width=16)
 
-# Plot module expression on the cell UMAP basis:
+# Plot module expression on the cell-level UMAP basis:
 pl.plot_umap_grid(mod, graph_id)
 
-# Get the modules/print out:
+# Get the modules and/or print them out:
 mlist = mod.get_modules(graph_id, print_modules=False)
 mod.save_modules(graph_id)
 
 # Get functional enrichments for the modules:
 gpres = sm.get_goterms(mod, graph_id)
 #+END_SRC
-
 
