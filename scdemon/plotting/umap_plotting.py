@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 """UMAP plotting - grid of modules."""
 import logging
 import numpy as np

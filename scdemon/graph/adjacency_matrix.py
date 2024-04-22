@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 """Class for handling an adjacency matrix."""
 from .utils_adjacency import (
     zscore_from_bivariate_cutoff,

@@ -1,5 +1,5 @@
-#!/usr/bin/python
-"""[WORKING] Reduced class for computing modules on adata object."""
+#!/usr/bin/env python3
+"""Class for computing modules on adata object."""
 
 # Internal imports:
 from .graph import gene_graph, adjacency_matrix
@@ -26,42 +26,37 @@ from pandas.api.types import is_categorical_dtype
 from anndata import AnnData
 
 
-# Removed options
-# csuff,
-# imgdir=None,
-# h5ad_file=None,  # File corresponding to adata (for saving)
-
 # TODO: standardize SVD vs. PCs nomenclature
 # TODO: set global imgdir?
 
-def run_modules(
-    adata,
-    suffix=None,
-    seed=1, # TODO: add fixed random seed on construction
-    filter_expr=None,
-    svd_k=100,
-    use_fbpca=True,
-):
-    """Run modules"""
-    # TODO: Farm out instances:
-    if type(obj) is AnnData:
-        # Create modules object differently depending on object.
-        mod = modules(adata,
-                      suffix=suffix,
-                      seed=seed,
-                      filter_expr=filter_expr,
-                      svd_k=svd_k,
-                      use_fbpca=use_fbpca)
-    else:
-        # NOTE: If no anndata, where do pieces go?
-        pass
-    mod.setup()  # Setup the object
-    # TODO: how to handle different graphs?
-    graph_id = "base"
-    # clustering resolution to main call
-    mod.make_graph(graph_id, resolution=2.5)
-    # TODO: Enable this to work with / without an adata object
-    # Maybe two parts - one is setup > correlation, second is make_graph >  modules
+# def run_modules(
+#     adata,
+#     suffix=None,
+#     seed=1, # TODO: add fixed random seed on construction
+#     filter_expr=None,
+#     svd_k=100,
+#     use_fbpca=True,
+# ):
+#     """Run modules"""
+#     # TODO: Farm out instances:
+#     if type(obj) is AnnData:
+#         # Create modules object differently depending on object.
+#         mod = modules(adata,
+#                       suffix=suffix,
+#                       seed=seed,
+#                       filter_expr=filter_expr,
+#                       svd_k=svd_k,
+#                       use_fbpca=use_fbpca)
+#     else:
+#         # NOTE: If no anndata, where do pieces go?
+#         pass
+#     mod.setup()  # Setup the object
+#     # TODO: how to handle different graphs?
+#     graph_id = "base"
+#     # clustering resolution to main call
+#     mod.make_graph(graph_id, resolution=2.5)
+#     # TODO: Enable this to work with / without an adata object
+#     # Maybe two parts - one is setup > correlation, second is make_graph >  modules
 
 
 class modules_core(object):

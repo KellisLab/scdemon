@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 """Utility functions for merging multiple graphs."""
 import numpy as np
 

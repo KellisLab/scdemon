@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 """Utility scripts for gene graph class."""
 
 import logging

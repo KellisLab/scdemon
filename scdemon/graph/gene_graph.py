@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 """Gene graph handling."""
 # --------------------------------
 # Class for handling a gene graph:

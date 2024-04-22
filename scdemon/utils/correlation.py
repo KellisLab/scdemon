@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 """Utility functions for calculating / estimating correlation."""
 import logging
 import numpy as np

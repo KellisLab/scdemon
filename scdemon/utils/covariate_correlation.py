@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 """Utility functions for correlation between covariates and PCs"""
 import logging
 import numpy as np

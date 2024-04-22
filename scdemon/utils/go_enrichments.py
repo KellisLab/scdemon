@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 """Utility functions for getting / managing GO enrichments for modules."""
 import logging
 

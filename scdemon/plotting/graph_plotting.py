@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 """Plotting genes on the UMAP basis or the gene-gene graph."""
 import os
 import re

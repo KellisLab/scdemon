@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 """Simple recipes for scanpy pre-processing."""
 import numpy as np
 import scanpy as sc
