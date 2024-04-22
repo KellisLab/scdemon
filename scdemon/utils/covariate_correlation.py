@@ -1,8 +1,8 @@
 #!/usr/bin/python
-"""Auxiliary functions for correlation between covariates and PCs"""
+"""Utility functions for correlation between covariates and PCs"""
+import logging
 import numpy as np
 import pandas as pd
-import logging
 
 
 def vcorrcoef(X, y):

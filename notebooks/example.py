@@ -1,5 +1,5 @@
 #!usr/bin/python
-"""Example code for using scmodule part of the library."""
+"""Example code for using scdemon part of the library."""
 # ---------------------------------------------------------------------
 # Example - compute co-expression modules using a scanpy anndata object
 # Updated: 04/08/24
@@ -33,7 +33,7 @@ logging.info("Loaded example dataset")
 
 # Set arguments for plotting outputs:
 imgdir = "./"
-# Make the scmodule object:
+# Make the scdemon object:
 max_k = 100
 mod = sm.modules_core(adata,
                       # Tagline for plots
