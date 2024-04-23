@@ -1,5 +1,5 @@
-#!usr/bin/python
-"""Example code for using scmodule part of the library."""
+#!/usr/bin/env python3
+"""Example code for using scdemon part of the library."""
 # ---------------------------------------------------------------------
 # Example - compute co-expression modules using a scanpy anndata object
 # Updated: 04/08/24
@@ -31,29 +31,12 @@ else:
 
 logging.info("Loaded example dataset")
 
-# Set arguments for plotting outputs:
-imgdir = "./"
-# Make the scmodule object:
+# Make the modules handling object:
 max_k = 100
-mod = sm.modules_core(adata,
-                      # Tagline for plots
-                      suffix=tag,
-                      # imgdir=imgdir, TODO: Set global imgdir?
+mod = sm.modules_core(adata, suffix=tag, # Tagline for plots
                       # Options for graph creation:
                       svd_k=max_k, filter_expr=0.05)
 mod.setup()  # Setup the object
-
-# For testing graph construction:
-mod.make_graph('rse', method='robust_se', t_cutoff=4.5, scale=0.75)
-graph_id = 'rse'
-pl.plot_genes(mod, graph_id, attr="leiden", show_labels=True, width=16)
-pl.plot_heatmap_avgexpr(mod, graph_id, cvlist=['leiden'], attr="leiden")
-pl.plot_umap_grid(mod, graph_id)
-
-
-# mod.make_graph('merge', multigraph=True, power=[0,.5,1])
-# mod.make_graph('raw', raw=True)
-# mod.make_graph('subset', filter_covariate="leiden")
 
 
 # Make graph using the selected parameters for basic analysis:
@@ -94,22 +77,19 @@ pl.plot_heatmap_avgexpr(mod, graph_id, cvlist=cvlist, attr="leiden")
 
 # Make some other graphs based on different methods:
 # --------------------------------------------------
-# 1. Make a graph using robust_se:
-mod.make_graph('rse', method='robust_se')
-
-# 2. Make a graph from multiple resolutions:
+# 1. Make a graph from multiple resolutions:
 mod.make_graph('merge', multigraph=True, power=[0,.5,1])
 
-# 3. Make a graph from the raw correlation:
+# 2. Make a graph from the raw correlation:
 mod.make_graph('raw', raw=True)
 
-# 4. Remove PCs correlated with the cell clustering (leiden)
+# 3. Remove PCs correlated with the cell clustering (leiden)
 mod.make_graph('subset', filter_covariate="leiden")
 
 
 # Plot these graphs:
 # ------------------
-graphlist = ['rse', 'merge', 'subset', 'raw']
+graphlist = ['merge', 'subset', 'raw']
 for graph_id in graphlist:
     pl.plot_genes(mod, graph_id, attr="leiden", show_labels=True, width=16)
     pl.plot_heatmap_avgexpr(mod, graph_id, cvlist=['leiden'], attr="leiden")

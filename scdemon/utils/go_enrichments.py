@@ -1,5 +1,5 @@
-#!/usr/bin/python
-"""Functions for getting / managing GO enrichments for modules."""
+#!/usr/bin/env python3
+"""Utility functions for getting / managing GO enrichments for modules."""
 import logging
 
 # For GO annotations (needs connection):
@@ -21,6 +21,3 @@ def get_goterms(obj, graph_id, attr="leiden", organism="hsapiens",
 
     return obj.gpres
 
-# TODO: saving / returning enrichments
-# TODO: plotting enrichments
-# TODO: save enrichments for each graph/config

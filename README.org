@@ -1,92 +1,82 @@
-* scdemon
+* scdemon: single-cell decorrelated module networks
 ** Installation
-In R:
-#+BEGIN_SRC R
-  devtools::install_github("kellislab/scdemon")
-#+END_SRC
+**** Python package:
 
-In Python:
+Install the python package with pip directly from github as: 
 #+BEGIN_SRC sh
-  pip install git+https://github.com/kellislab/scdemon
+pip install git+https://github.com/KellisLab/scdemon
 #+END_SRC
-** API
-*** robust_se_prepare
-  takes in a 
-*** robust_se_t
-  takes in a corrected V matrix
-** algorithm checklist
-*** Normalization
-batteries included
-*** SVD/PCA/LSI
-need extraction
-*** PC filtering/adjustment
-- Batch effects: use QR-SVD trick
-- Multiome: Use common features and use orthogonal procrustes (SVD-based) [[https://doi.org/10.1007%2FBF02289451]]
-*** Adjacency
-*** Filtering KNN
-p-value filtering based on expression?
-*** Community detection
-BigCLAM/Leiden
-** structure
-| directory   | description |
-|-------------+-------------|
-| src/scdemon | C++         |
-| src/rcpp    | C++ in R    |
-| scdemon/    | python      |
-| R/          | R code      |
 
-*** Code structure / flow
-1. Extract $U$ $\Sigma$ $V'$, ensure =std=, =n_cells_by_counts=, =covariates= are present.
-2. SE estimation. Use all dependencies, build in parallel with C++/OpenMP
-3. Community detection in C++/OpenMP (leidenalg/bigclam)
-4. Visualization and secondary analysis
-**** Dataset storage (AnnData/AnnDataR)
-- .varp: PCA based ANN (bool)
-- .varp: filtered graph (CSR, data=tvalue)
-- .var / .varm: clustering / cluster loadings
-****  Dataset storage (SeuratObject)
+For a fresh install, or if version number hasn't changed, first run: ~pip uninstall scdemon~
 
-***  Minimal conda environment
+Alternatively, install by cloning the directory as:
+
+#+BEGIN_SRC sh
+git clone git@github.com:KellisLab/scdemon.git
+pip install ./scdemon
+#+END_SRC
+
+
+**** Minimal conda environment:
+
 #+BEGIN_SRC bash
-mamba create -n scdemonpy conda-forge::gxx_linux-64 conda-forge::gcc_linux-64 conda-forge::gfortran_linux-64 conda-forge::eigen conda-forge::gsl conda-forge::anndata conda-forge::tqdm conda-forge::pybind11 conda-forge::pip conda-forge::igraph conda-forge::umap-learn conda::scikit-build
-mamba create -n scdemonr conda-forge::gxx_linux-64 conda-forge::gcc_linux-64 conda-forge::gfortran_linux-64 conda-forge::r-devtools conda-forge::r-rcppeigen conda-forge::r-rcppprogress conda-forge::gsl bioconda::bioconductor-rhdf5 conda-forge::r-igraph conda-forge::r-uwot conda-forge::r-irlba
+conda create -n scdemonpy conda-forge::anndata conda-forge::tqdm conda-forge::pip conda-forge::igraph conda-forge::umap-learn conda::scikit-build
 #+END_SRC
-** large to-dos (ordered by importance)
-*** DONE C++ demo code linked to python and R
-*** DONE HC0 SE in C++
-**** DONE Eigen::MatrixBase<T> type
-*** DONE HC0 SE in R
-*** DONE HC0 SE in Python
-*** DONE Sparse matrix conversion: 0/1 indexing
-*** DONE threaded implementation
-**** OpenMP vs STL parallel
-*** DONE simplify setup
-use data.table https://github.com/Rdatatable/data.table/blob/master/configure and nloptr https://github.com/astamm/nloptr/blob/master/configure as templates
-- scikit-build + CMake for python
-- configure.ac/configure/cleanup scripts for R  
-*** DONE CMake build for R and python
-*** TODO Prelim clustering with Laplacian + hclust
-*** TODO c++ non-self SE method & interface
-*** TODO pre-commit
-- lintr action https://github.com/r-lib/actions/blob/v2/examples/lint.yaml
-- python linting like anndata (ruff)
-*** TODO pkgdown website
-- Run usethis::use_github_action("pkgdown")
-*** TODO testing/codecov
-- pytest
-- testthat
-*** TODO vignettes in R and python
-*** TODO CI circleCI like bioconda?
-*** TODO sphinx/readthedocs
-*** TODO bigclam in C++
-*** TODO bigclam python/R interface
-*** TODO C++ tests
-*** TODO benchmarking
-*** TODO PyPI package
-like https://github.com/scverse/anndata/blob/main/.github/workflows/publish.yml
-*** TODO Submit to bioconda (R, python versions)
-*** TODO Add to bioconductor?, seurat-wrappers, scanpy.external.tl
-*** TODO Single-cell Multi-omic: Use CCA or OPA; combine graphs
-*** TODO metacell support instead of using PCA based
-*** TODO support for WGCNA
+
+
+**** Full Dependencies:
+
+#+BEGIN_SRC bash
+numpy, pandas,
+scipy, tqdm,
+igraph, umap-learn,
+leidenalg, scikit-learn,
+scanpy, anndata,
+seaborn, matplotlib,
+fbpca, gprofiler-official,
+python-igraph, adjustText,
+numba
+#+END_SRC
+
+
+** Usage
+See Documentation: https://scdemon.readthedocs.io/
+
+See ~notebooks/example.py~ for a more complete example.
+
+Basic example using ~scanpy~:
+
+#+BEGIN_SRC python
+import numpy as np
+import scanpy as sc
+import scdemon as sm
+from scdemon.utils import recipe_full
+from scdemon import plotting as pl
+
+# Load one of scanpy's datasets:
+adata = sc.datasets.pbmc3k()
+recipe_full(adata, preprocess=True, annotate=True)
+
+# Make the modules handling object:
+mod = sm.modules_core(adata, suffix='pbmc_example', svd_k=100)
+mod.setup()
+
+# Build a gene-graph graph and learn modules:
+graph_id = 'base'
+mod.make_graph(graph_id, resolution=2.5)
+
+# Plot genes on the gene-gene graph and on the gene-level UMAP basis
+pl.plot_genes(mod, graph_id, attr="leiden", show_labels=True, width=16)
+pl.plot_genes(mod, graph_id, basis='umap', attr="leiden", width=16)
+
+# Plot module expression on the cell-level UMAP basis:
+pl.plot_umap_grid(mod, graph_id)
+
+# Get the modules and/or print them out:
+mlist = mod.get_modules(graph_id, print_modules=False)
+mod.save_modules(graph_id)
+
+# Get functional enrichments for the modules:
+gpres = sm.get_goterms(mod, graph_id)
+#+END_SRC
 

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 """Heatmap plotting: average expression and SVD vs covariates."""
 import logging
 import numpy as np

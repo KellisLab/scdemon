@@ -5,26 +5,29 @@
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
-from scdemon import __version__
+
 project = 'scdemon'
-copyright = '2024, Benjamin James'
-author = 'Benjamin James'
-release = __version__
+copyright = '2024, Benjamin James, Carles Boix'
+author = 'Benjamin James, Carles Boix'
+release = '0.0.4'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    "nbsphinx"
+    'sphinx.ext.duration',
+    'sphinx.ext.doctest',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
 ]
 
 templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = []
 
 
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'alabaster'
+html_theme = "sphinx_rtd_theme"
 html_static_path = ['_static']

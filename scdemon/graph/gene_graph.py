@@ -1,10 +1,10 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 """Gene graph handling."""
 # --------------------------------
 # Class for handling a gene graph:
 # Updated: 06/28/21
 # --------------------------------
-from ..auxiliary import vcorrcoef
+from ..utils import vcorrcoef
 from ..data import snap_colors
 from .utils_community_detection import (
     calculate_gene_modules_leiden,

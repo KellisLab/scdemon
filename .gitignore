@@ -95,6 +95,8 @@ docs/_static/
 docs/_templates/
 docs/.doctrees/
 docs/.buildinfo
+docs/source/generated/
+
 
 # PyBuilder
 target/

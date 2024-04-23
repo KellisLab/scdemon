@@ -1,17 +1,17 @@
-#!/usr/bin/python
-"""[WORKING] Reduced class for computing modules on adata object."""
+#!/usr/bin/env python3
+"""Class for computing modules on adata object."""
 
-# Internal:
+# Internal imports:
 from .graph import gene_graph, adjacency_matrix
-from .correlation import (
+from .utils import (
+    # Correlation:
     calculate_correlation,
     calculate_correlation_estimate,
-    calculate_correlation_estimate_sd
+    calculate_correlation_estimate_sd,
+    calculate_svd_covar_corr, # Covariates
+    # Multigraph
+    make_graphlist, partition_graphlist,
 )
-
-
-from .auxiliary import calculate_svd_covar_corr
-from .utils_multigraph import make_graphlist, partition_graphlist
 
 import os
 import re
@@ -26,42 +26,37 @@ from pandas.api.types import is_categorical_dtype
 from anndata import AnnData
 
 
-# Removed options
-# csuff,
-# imgdir=None,
-# h5ad_file=None,  # File corresponding to adata (for saving)
-
 # TODO: standardize SVD vs. PCs nomenclature
 # TODO: set global imgdir?
 
-def run_modules(
-    adata,
-    suffix=None,
-    seed=1, # TODO: add fixed random seed on construction
-    filter_expr=None,
-    svd_k=100,
-    use_fbpca=True,
-):
-    """Run modules"""
-    # TODO: Farm out instances:
-    if type(obj) is AnnData:
-        # Create modules object differently depending on object.
-        mod = modules(adata,
-                      suffix=suffix,
-                      seed=seed,
-                      filter_expr=filter_expr,
-                      svd_k=svd_k,
-                      use_fbpca=use_fbpca)
-    else:
-        # NOTE: If no anndata, where do pieces go?
-        pass
-    mod.setup()  # Setup the object
-    # TODO: how to handle different graphs?
-    graph_id = "base"
-    # clustering resolution to main call
-    mod.make_graph(graph_id, resolution=2.5)
-    # TODO: Enable this to work with / without an adata object
-    # Maybe two parts - one is setup > correlation, second is make_graph >  modules
+# def run_modules(
+#     adata,
+#     suffix=None,
+#     seed=1, # TODO: add fixed random seed on construction
+#     filter_expr=None,
+#     svd_k=100,
+#     use_fbpca=True,
+# ):
+#     """Run modules"""
+#     # TODO: Farm out instances:
+#     if type(obj) is AnnData:
+#         # Create modules object differently depending on object.
+#         mod = modules(adata,
+#                       suffix=suffix,
+#                       seed=seed,
+#                       filter_expr=filter_expr,
+#                       svd_k=svd_k,
+#                       use_fbpca=use_fbpca)
+#     else:
+#         # NOTE: If no anndata, where do pieces go?
+#         pass
+#     mod.setup()  # Setup the object
+#     # TODO: how to handle different graphs?
+#     graph_id = "base"
+#     # clustering resolution to main call
+#     mod.make_graph(graph_id, resolution=2.5)
+#     # TODO: Enable this to work with / without an adata object
+#     # Maybe two parts - one is setup > correlation, second is make_graph >  modules
 
 
 class modules_core(object):
@@ -76,13 +71,20 @@ class modules_core(object):
                  suffix=None,
                  # Arguments for setup:
                  seed=1,
-                 filter_expr=None,
+                 filter_expr=0.05,
                  svd_k=100, # TODO: change to k, change example code to match
                  keep_first_PC=False,
                  use_fbpca=True,
                  cv_cutoff=0.4,
                  ):
-        """Initialize gene modules object."""
+        """
+        Initialize gene modules object.
+        ---------------
+
+        test
+        :param adata: AnnData object containing single-cell dataset
+
+        """
         # TODO: implement stand-alone matrix
         # Dataset:
         self.adata = adata
@@ -152,7 +154,7 @@ class modules_core(object):
         else:
             return True
 
-    def _calculate_PCA(self):
+    def _calculate_PCA(self, center=False):
         """
         Calculate PCA components U, s, V if they are not already computed.
         ---
@@ -166,7 +168,7 @@ class modules_core(object):
                 # arpack / scipy / sklearn?
                 logging.info("Calculating PCA of X with fbpca")
                 self.U, self.s, self.V = fbpca.pca(
-                    self.X, k=self.k, raw=not self.center)
+                    self.X, k=self.k, raw=not center)
             else:
                 # Compute PCA with scanpy options if not using fbpca
                 if "X_pca" not in self.adata.obsm.keys():
@@ -246,39 +248,17 @@ class modules_core(object):
                     self.cv_ticks[covar] = False
 
     # TODO: put the majority of the correlation function into an import
-    # TODO: allow passing abs_t and t_cutoff to this function
-    def _calculate_correlation(self,
-                               indices=None, center=False, power=0,
-                               raw=False, robust_se=False, t_cutoff=6.5):
+    def _calculate_correlation(self, indices=None, center=False, power=0,
+                               raw=False):
         """
         Calculate the correlation between the genes.
         ---
         Calculates either raw or estimated, using the SVD and selected PCs.
-        Also estimates the SD for the estimated correlation by bootstrap
         """
         adjacency = None
         if raw:
             # Raw correlation, centered or not:
             corr = calculate_correlation(self.adata.X, center=center)
-        elif robust_se:
-            # Adjacency from robust_se
-            from .robust_se import robust_se_default
-            # TODO: add function wrapper that handles indices and power!
-            # TODO: allow using harmony instead of PCA
-            # TODO: Separate out the robust_se from the batch correction
-            adjacency = robust_se_default(
-                U=self.U @ np.diag(self.s), V=self.V, B=None,
-                t_cutoff=t_cutoff, abs_t=True)
-
-            # Average it with its transpose to get symmetric adjacency:
-            adjacency = (adjacency + adjacency.T) / 2
-            adjacency.data = np.where(adjacency.data < t_cutoff,
-                                      0, adjacency.data)
-            adjacency = sparse.csr_matrix(adjacency)
-
-            # Correlation estimate:
-            corr = calculate_correlation_estimate(
-                self.U, self.s, self.V, power=0, indices=indices)
         else:
             # Estimate correlation, with a subset of PCs:
             corr = calculate_correlation_estimate(
@@ -314,7 +294,7 @@ class modules_core(object):
         ---
         multigraph: multigraph or single.
         power:      power for eigenvalues
-        method:     thresholding method (cutoff, bivariate, robust_se, sd)
+        method:     thresholding method (cutoff, bivariate, sd)
         """
         if multigraph:
             self._make_merged_graph(graph_id, power_list=power, **kwargs)
@@ -375,15 +355,12 @@ class modules_core(object):
         """
         Construct the adjacency matrix for the given parameters.
         ---
-        - Calculates correlation (raw, base, or robust_se)
-        - Thresholds the correlation (cutoff, bivariate, sd, or robust_se)
+        - Calculates correlation (raw, base)
+        - Thresholds the correlation (cutoff, bivariate, sd)
         """
         # 4. Calculate the correlation:
-        robust_se = (method == 'robust_se')
         corr, adjacency = self._calculate_correlation(
-            indices=indices, power=power, raw=raw,
-            robust_se=robust_se, t_cutoff=t_cutoff)
-        # sd calculation if needed, but robust_se is highly preferable:
+            indices=indices, power=power, raw=raw)
         if method == 'sd' and not raw:
             # TODO: update function to use correct indices and power!
             corr_sd = self._calculate_correlation_estimate_sd(

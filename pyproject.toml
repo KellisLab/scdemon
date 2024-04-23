@@ -1,12 +1,12 @@
-[build-system]
-requires = ["scikit-build-core>=0.3.3", "pybind11"] 
-build-backend = "scikit_build_core.build"
+# [build-system]
+# requires = ["scikit-build-core>=0.3.3"] 
+# build-backend = "scikit_build_core.build"
 # build-backend = "setuptools.build_meta"
 
 [project]
 name = "scdemon"
 version = "0.0.4"
-description = "Single cell decomposition into networks"
+description = "Single cell decomposition into module networks"
 authors = [{name = "Benjamin James", email = "benjames@mit.edu"},
            {name = "Carles Boix", email = "cboix@mit.edu"}]
 license = {file = "LICENSE"}
@@ -35,6 +35,9 @@ test = ["pytest", "pytest-cov", "statsmodels", "anndata"]
 [tool.scikit-build]
 wheel.expand-macos-universal-tags = true
 
+[tool.setuptools]
+packages = ["scdemon", "scdemon.utils", "scdemon.plotting",
+         "scdemon.graph", "scdemon.data"]
 
 [tool.pytest.ini_options]
 python_files = "test_*.py"

@@ -1,10 +1,7 @@
-#!/usr/bin/python
-"""Utility scripts for correlation class."""
-
+#!/usr/bin/env python3
+"""Utility functions for calculating / estimating correlation."""
 import logging
 import numpy as np
-from scipy.stats import norm
-from scipy import sparse
 
 
 def triu_mask(A):
@@ -22,12 +19,13 @@ def calculate_correlation(X, center=False):
     # TODO: Allow numpy corrcoeff
     if center:
         # TODO: See difference with centering X:
-        logging.debug("Raw centering not implemented")
+        raise NotImplementedError("Raw centering not implemented")
         corr = None
     else:
+        from scipy.sparse import issparse
         xTx = X.T.dot(X) / X.shape[0]
-        if sparse.issparse(xTx):
-            xTx = xTx.toarray()  # TODO: unless x is not sparse
+        if issparse(xTx):
+            xTx = xTx.toarray()
         sd = np.sqrt(np.diag(xTx))
         xTx = xTx / sd[:, np.newaxis]
         corr = xTx / sd[np.newaxis, :]
@@ -53,19 +51,13 @@ def calculate_correlation_estimate(U, s, V, power=0, indices=None):
 def calculate_single_correlation_estimate(U, s, V, power=0, indices=None):
     """Calculate an SVD-derived estimate of the correlation matrix."""
     logging.info("Estimating correlation of columns of matrix X with its SVD")
-    # TODO: get proper scaling factor here (d / N ?)
     scale = U.shape[0] * V.shape[1]
     if indices is not None:
         logging.debug("Reducing to subset of indices")
-        # TODO: Proper handling of subset.
-        # TODO: Return non-scaled
         s = s[indices]
         V = V[indices, :]
-
     if power != 0:
         logging.debug(f"Using power {power}")
-        # Allow any range of s-power, 0.5 is
-        # For comparison with Vs^2V.T (approx cov.)
         s_red = np.diag(s**power)
         X_cov = V.T.dot(s_red).dot(V) / scale
     else:
@@ -78,15 +70,12 @@ def calculate_single_correlation_estimate(U, s, V, power=0, indices=None):
     return(corr_est)
 
 
-# TODO: This is very expensive, update to compute as we go.
 def calculate_correlation_estimate_sd(U, s, V, nperm=25, seed=1):
     """Estimate the sd of correlations by subsampling V."""
-    # Estimate the sd of correlations by subsampling V:
     np.random.seed(seed)  # Reproducible sampling
     k = U.shape[1]
     full_ind = np.random.randint(k, size=(k // 2, nperm))
     corr_est = np.zeros((V.shape[1], V.shape[1], nperm))
-    # TODO: Perform running computation for reduced memory footprint
     for i in range(nperm):
         logging.debug(i)
         corr_est[:, :, i] = calculate_correlation_estimate(

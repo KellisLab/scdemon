@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 """Plot the enrichment of covariates on graphs."""
 import logging
 import numpy as np

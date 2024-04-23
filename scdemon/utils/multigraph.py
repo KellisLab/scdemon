@@ -1,13 +1,11 @@
-#!/usr/bin/python
-"""Functions for merging multiple graphs."""
+#!/usr/bin/env python3
+"""Utility functions for merging multiple graphs."""
 import numpy as np
-import leidenalg as la
 
 
 def make_graphlist(mod, power_list, min_size=4,
                    keep_all_z=True, filter_covariate=None, **kwargs):
     """Make and process a list of graphs."""
-    # TODO: allow this to work with a variety of values (SVD k, power, z, etc)
     # Compute the graphs on the modules object:
     graphs = compute_graphs(mod, power_list, keep_all_z=keep_all_z,
                             filter_covariate=filter_covariate, **kwargs)
@@ -91,6 +89,7 @@ def prune_graph_to_nodes(graph, keep_nodes, by_index=False):
 def partition_graphlist(graphlist, resolution=3,
                         n_iterations=-1, random_state=1):
     """Partition nodes on multiple graphs using leidenalg multiplex."""
+    import leidenalg as la
     partition_type = la.RBConfigurationVertexPartition
     partition_kwargs = {}
     partition_kwargs["n_iterations"] = n_iterations

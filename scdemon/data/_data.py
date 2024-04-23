@@ -1,8 +1,5 @@
-#!/usr/bin/python
-# -----------------
-# Load datasets:
-# Updated: 06/28/21
-# -----------------
+#!/usr/bin/env python3
+"""Load datasets"""
 from pathlib import Path
 import pandas as pd
 

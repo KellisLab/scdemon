@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 """Functions for module enrichments on dataFrames."""
 import numpy as np
 import pandas as pd

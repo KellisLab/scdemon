@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 """Utility scripts for pruning graphs and adjacency matrices."""
 import logging
 import numpy as np

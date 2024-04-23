@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 """Class for handling an adjacency matrix."""
 from .utils_adjacency import (
     zscore_from_bivariate_cutoff,
@@ -103,7 +103,7 @@ class adjacency_matrix(object):
                 self.corr, self.corr_sd, self.margin, z=self.z)
         else:
             raise ValueError(
-                "Method %s not in (cutoff, bivariate, sd, robust_se)" %
+                "Method %s not in (cutoff, bivariate, sd)" %
                 self.method)
         return(adjacency)
 
