@@ -4,11 +4,12 @@
 # Example - compute co-expression modules using a scanpy anndata object
 # Updated: 04/08/24
 # ---------------------------------------------------------------------
-import logging
 import os
-import scanpy as sc
+import logging
 import numpy as np
+import pandas as pd
 
+import scanpy as sc
 import scdemon as sm
 from scdemon.utils import recipe_full
 from scdemon import plotting as pl
@@ -33,9 +34,9 @@ logging.info("Loaded example dataset")
 
 # Make the modules handling object:
 max_k = 100
-mod = sm.modules_core(adata, suffix=tag, # Tagline for plots
-                      # Options for graph creation:
-                      svd_k=max_k, filter_expr=0.05)
+mod = sm.modules(adata, suffix=tag, # Tagline for plots
+                 # Options for graph creation:
+                 svd_k=max_k, filter_expr=0.05)
 mod.setup()  # Setup the object
 
 
@@ -51,8 +52,11 @@ pl.plot_genes(mod, graph_id, basis='umap', attr="leiden", width=16)
 # Plot module expression on the cell UMAP basis:
 pl.plot_umap_grid(mod, graph_id)
 
-# Get the modules/print out:
-mlist = mod.get_modules(graph_id, print_modules=False)
+# Get the modules as dictionary of lists, and/or print them out:
+mlist = mod.get_modules(graph_id, print_modules=True)
+# Alternative format: module assignments in DF
+moddf = mod.get_module_assignment(graph_id)
+# Save them to a file:
 mod.save_modules(graph_id)
 
 # Get functional enrichments for the modules:
@@ -96,5 +100,17 @@ for graph_id in graphlist:
     pl.plot_umap_grid(mod, graph_id)
 
 
-# TODO: Add get_k_stats test too
+# Other functionalities:
+# ----------------------
+# Find the module for a specific gene:
+mod.find_gene(graph_id, 'CD74')
+
+# Recluster an existing graph:
+mod.recluster_graph(graph_id, resolution=2.5)
+
+# Test module recovery for varying k truncation for SVD:
+klist = list(np.arange(30, max_k, 10)) + [max_k]
+ng, nm = mod.get_k_stats(k_list=klist, power=0)
+score = np.array(ng) / 100 + np.array(nm)
+paramdf = pd.DataFrame({'k': klist, 'ng': ng, 'nm': nm, 'score': score})
 

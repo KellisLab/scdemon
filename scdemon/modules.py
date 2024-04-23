@@ -25,41 +25,7 @@ from pandas.api.types import is_categorical_dtype
 
 from anndata import AnnData
 
-
-# TODO: standardize SVD vs. PCs nomenclature
-# TODO: set global imgdir?
-
-# def run_modules(
-#     adata,
-#     suffix=None,
-#     seed=1, # TODO: add fixed random seed on construction
-#     filter_expr=None,
-#     svd_k=100,
-#     use_fbpca=True,
-# ):
-#     """Run modules"""
-#     # TODO: Farm out instances:
-#     if type(obj) is AnnData:
-#         # Create modules object differently depending on object.
-#         mod = modules(adata,
-#                       suffix=suffix,
-#                       seed=seed,
-#                       filter_expr=filter_expr,
-#                       svd_k=svd_k,
-#                       use_fbpca=use_fbpca)
-#     else:
-#         # NOTE: If no anndata, where do pieces go?
-#         pass
-#     mod.setup()  # Setup the object
-#     # TODO: how to handle different graphs?
-#     graph_id = "base"
-#     # clustering resolution to main call
-#     mod.make_graph(graph_id, resolution=2.5)
-#     # TODO: Enable this to work with / without an adata object
-#     # Maybe two parts - one is setup > correlation, second is make_graph >  modules
-
-
-class modules_core(object):
+class modules(object):
     """
     Calculate gene modules from anndata or stand-alone matrix.
     """
@@ -74,7 +40,7 @@ class modules_core(object):
                  filter_expr=0.05,
                  svd_k=100, # TODO: change to k, change example code to match
                  keep_first_PC=False,
-                 use_fbpca=True,
+                 process_covariates=False, # Default of processing covars
                  cv_cutoff=0.4,
                  ):
         """
@@ -106,9 +72,9 @@ class modules_core(object):
         # Arguments for setup steps (up to correlation estimate)
         self.k = svd_k
         self.filter_expr = filter_expr
-        self.use_fbpca = use_fbpca
         self.seed = seed
         self.keep_first_PC = keep_first_PC
+        self.process_covariates = process_covariates
         self.cv_cutoff = cv_cutoff
 
         # Additional metadata / files:
@@ -131,7 +97,8 @@ class modules_core(object):
         # 1a. normalize (done outside of this)
         self._filter_by_genes() # 1b. subset to genes above expr cutoff
         self._calculate_PCA() # 2. perform SVD or get pre-computed SVD
-        self._setup_covariate_PC_comparison() # 2a. filter components
+        if self.process_covariates:
+            self._setup_covariate_PC_comparison() # 2a. to filter components
         self._adjust_PCs() # 3. PC adjustment # TODO: Put before or after 2a?
 
     # NOTE: Filter in place on modules object
@@ -159,28 +126,20 @@ class modules_core(object):
         Calculate PCA components U, s, V if they are not already computed.
         ---
         Defaults to X_pca in adata.obsm if available.
-        Otherwise uses fbpca or sc.tl.pca
+        Otherwise uses sc.tl.pca
         """
         if not self._check_PCA():
-            if self.use_fbpca and not 'X_pca' in self.adata.obsm:
-                import fbpca
-                # TODO: Check with Ben if other preferred PCA method
-                # arpack / scipy / sklearn?
-                logging.info("Calculating PCA of X with fbpca")
-                self.U, self.s, self.V = fbpca.pca(
-                    self.X, k=self.k, raw=not center)
-            else:
-                # Compute PCA with scanpy options if not using fbpca
-                if "X_pca" not in self.adata.obsm.keys():
-                    import scanpy as sc
-                    logging.debug("Computing PCA through scanpy")
-                    sc.tl.pca(self.adata, n_comps=self.k)
-                self.V = self.adata.varm["PCs"].T
-                ev = self.adata.uns["pca"]["variance"]
-                self.s = np.sqrt(ev * (self.adata.shape[0] - 1))
-                self.U = self.adata.obsm['X_pca'] / self.s[np.newaxis, :]
-                # np.sum(np.abs(u**2), axis=0) # Check all approx 1
-                # TODO: alternatively use X_pca from harmony (instead of U*s)
+            if ("X_pca" not in self.adata.obsm.keys()) or \
+                    (self.adata.obsm['X_pca'].shape[1] < self.k):
+                # Compute PCA with scanpy options:
+                import scanpy as sc
+                logging.debug("Computing PCA through scanpy")
+                sc.tl.pca(self.adata, n_comps=self.k)
+            self.V = self.adata.varm["PCs"].T
+            ev = self.adata.uns["pca"]["variance"]
+            self.s = np.sqrt(ev * (self.adata.shape[0] - 1))
+            self.U = self.adata.obsm['X_pca'] / self.s[np.newaxis, :]
+            # TODO: alternatively use X_pca from harmony (instead of U*s)
 
     def _setup_covariate_PC_comparison(self):
         # Prep for covariate selection:
@@ -188,18 +147,23 @@ class modules_core(object):
         self._assign_covariates_to_PCs(invert=False)
         self._calculate_covariate_lengths()  # For plotting, later
 
-    def _select_PCs(self, filter_covariate=None):
+    def _select_PCs(self, filter_covariate=None, max_k=None):
         # Select SVD components to keep in the correlation calculation
         # TODO: allow invert?
         # TODO: allow multiple components (e.g. celltype + region)
         if filter_covariate is not None and \
                 filter_covariate in self.cvlist:
+            # Update if it wasn't run originally
+            if filter_covariate not in self.cv_pc_ind.keys():
+                self._setup_covariate_PC_comparison()
             indices = self.cv_pc_ind[filter_covariate]
             if not self.keep_first_PC:
                 indices = indices[indices != 0]
         else:
             indices = None if self.keep_first_PC else \
                 np.arange(1, self.U.shape[1])
+        if max_k is not None:
+            indices = indices[indices <= max_k]
         logging.debug(indices) # TODO: pretty print, maybe #k
         return(indices)
 
@@ -314,7 +278,6 @@ class modules_core(object):
                            full_graph_only=False,
                            keep_all_z=False,
                            layout=True,
-                           t_cutoff=6.5,
                            **kwargs):
         # 3. Select which PCs to keep:
         indices = self._select_PCs(filter_covariate=filter_covariate)
@@ -324,7 +287,7 @@ class modules_core(object):
             # Options for constructing correlation
             indices=indices, power=power, raw=raw,
             # Options for thresholding methods:
-            method=method, t_cutoff=t_cutoff,
+            method=method,
             **kwargs) # TODO: how to separate out kwargs for this vs. below
 
         # Make graph with adjacency instead of correlation:
@@ -349,7 +312,7 @@ class modules_core(object):
                                     # Options for correlation:
                                     indices=None, power=0, raw=False,
                                     # Options for thresholding method:
-                                    method='bivariate', t_cutoff=6.5,
+                                    method='bivariate',
                                     # TODO: Add adjacency options here:
                                     **kwargs):
         """
@@ -462,29 +425,33 @@ class modules_core(object):
         self.graphs[graph_id].kept_genes = graph.vs['name']
         return(graph)
 
-    def get_k_stats(self, k_list, power=0, resolution=None, **kwargs):
+    # TODO: could update to work with multigraph, or any set of graph options
+    def get_k_stats(self, k_list, power=0, resolution=None,
+                    raw=False, method='bivariate', filter_covariate=None,
+                    **kwargs):
         """Get statistics on # genes and # modules for each k setting."""
         ngenes = []
         nmodules = []
         for k in k_list:
-            ind = np.arange(k)
-            graph_id = 'test_k' + str(k)
-            # Build the graph - don't layout, but get modules:
-            corr_subset, _ = self._calculate_correlation(
-                indices=ind, power=power)
-            # TODO: MAKE ADJACENCY INSTEAD Here
-            raise NotImplementedError
+            indices = self._select_PCs(
+                filter_covariate=filter_covariate, max_k=k)
+            k_graph_id = 'test_k' + str(k)
+            # Estimate the correlation and build the adjacency matrix
+            corr_subset, adj_subset = self._construct_adjacency_matrix(
+                indices=indices, power=power, raw=raw,
+                method=method, **kwargs)
             try:
+                # Build the graph, - don't layout, but get modules:
                 self._make_single_graph_object(
-                    graph_id, corr=corr_subset, **kwargs)
-                self.graphs[graph_id].construct_graph(
-                    resolution=resolution, layout=False)
+                    k_graph_id, corr=corr_subset, adj=adj_subset, **kwargs)
+                self.graphs[k_graph_id].construct_graph(
+                    modules=True, resolution=resolution, layout=False)
                 # Store number of genes and modules:
                 nmodules.append(np.max(
-                    self.graphs[graph_id].assign['leiden'] + 1))
-                ngenes.append(len(self.graphs[graph_id].graph.vs))
+                    self.graphs[k_graph_id].assign['leiden'] + 1))
+                ngenes.append(len(self.graphs[k_graph_id].graph.vs))
                 # Delete graph after we have metrics:
-                del(self.graphs[graph_id])
+                del(self.graphs[k_graph_id])
                 gc.collect()
             except BaseException:
                 ngenes.append(0)
@@ -497,7 +464,7 @@ class modules_core(object):
     # -----------------------------------------------------------------------
     def recluster_graph(self, graph_id, resolution=None):
         """Re-cluster a graph with a different resolution."""
-        # TODO: Allow multiple modules at different resolution
+        # NOTE could update to store multiple modules at different resolution
         self.graphs[graph_id].calculate_gene_modules(resolution=resolution)
 
     def get_modules(self, graph_id, attr="leiden", print_modules=False):

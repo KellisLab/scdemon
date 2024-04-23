@@ -39,7 +39,6 @@ The full list of dependencies is as follows:
     leidenalg, scikit-learn,
     scanpy, anndata,
     seaborn, matplotlib,
-    fbpca, gprofiler-official,
+    gprofiler-official,
     python-igraph, adjustText,
     numba
-

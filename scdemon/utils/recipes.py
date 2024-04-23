@@ -14,7 +14,7 @@ def recipe_preprocess(adata, min_cells=3, min_genes=100):
 
 
 def recipe_annotate(adata):
-    sc.tl.pca(adata)
+    sc.tl.pca(adata, n_comps=100)
     sc.pp.neighbors(adata)
     sc.tl.umap(adata)
     sc.tl.leiden(adata)

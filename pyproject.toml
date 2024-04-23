@@ -1,3 +1,8 @@
+[build-system]
+requires = [
+    "setuptools>=60",
+    "setuptools-scm>=8.0"]
+
 # [build-system]
 # requires = ["scikit-build-core>=0.3.3"] 
 # build-backend = "scikit_build_core.build"
@@ -19,7 +24,7 @@ dependencies = [
     # Added from original modules, can prune:
     "scanpy", "anndata",
     "seaborn", "matplotlib",
-    "fbpca", "gprofiler-official",
+    "gprofiler-official",
     "python-igraph", "adjustText",
     "numba"
 ]
@@ -36,7 +41,8 @@ test = ["pytest", "pytest-cov", "statsmodels", "anndata"]
 wheel.expand-macos-universal-tags = true
 
 [tool.setuptools]
-packages = ["scdemon", "scdemon.utils", "scdemon.plotting",
+packages = ["scdemon", 
+         "scdemon.utils", "scdemon.plotting",
          "scdemon.graph", "scdemon.data"]
 
 [tool.pytest.ini_options]
