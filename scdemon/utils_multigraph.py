@@ -66,18 +66,19 @@ def flag_graphlist_nodes(graphlist, min_size=4):
 
 def clean_graphlist_nodes(graphlist, keep_nodes, by_index=False):
     """Remove nodes in a graph not in keep_nodes."""
-    if graphlist is list:
+    if type(graphlist) is list:
         for g in graphlist:
             prune_graph_to_nodes(g, keep_nodes, by_index=by_index)
     else:
         # NOTE: Could catch error if not graph, but ok for this purpose
         prune_graph_to_nodes(graphlist, keep_nodes, by_index=by_index)
+    return(graphlist)
 
 
 def prune_graph_to_nodes(graph, keep_nodes, by_index=False):
     # Note could autodetect if by index or name? Issues when names are #s
     if by_index:
-        NV = len(graphlist[0].vs['name'])
+        NV = len(graph.vs['name'])
         keep_nodes = np.unique(np.array(keep_nodes))
         to_delete = [i for i in np.arange(NV) if i not in keep_nodes]
     else:

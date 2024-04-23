@@ -173,9 +173,12 @@ class modules_core(object):
                     import scanpy as sc
                     logging.debug("Computing PCA through scanpy")
                     sc.tl.pca(self.adata, n_comps=self.k)
-                self.U = self.adata.obsm["X_pca"]  # TODO: FIX U for scanpy
-                self.s = self.adata.uns["pca"]["variance"]
                 self.V = self.adata.varm["PCs"].T
+                ev = self.adata.uns["pca"]["variance"]
+                self.s = np.sqrt(ev * (self.adata.shape[0] - 1))
+                self.U = self.adata.obsm['X_pca'] / self.s[np.newaxis, :]
+                # np.sum(np.abs(u**2), axis=0) # Check all approx 1
+                # TODO: alternatively use X_pca from harmony (instead of U*s)
 
     def _setup_covariate_PC_comparison(self):
         # Prep for covariate selection:
@@ -246,29 +249,41 @@ class modules_core(object):
     # TODO: allow passing abs_t and t_cutoff to this function
     def _calculate_correlation(self,
                                indices=None, center=False, power=0,
-                               raw=False, robust_se=False):
+                               raw=False, robust_se=False, t_cutoff=6.5):
         """
         Calculate the correlation between the genes.
         ---
         Calculates either raw or estimated, using the SVD and selected PCs.
         Also estimates the SD for the estimated correlation by bootstrap
         """
-        # Correlation:
-        # TODO: Should both corr be named the same?
+        adjacency = None
         if raw:
             # Raw correlation, centered or not:
             corr = calculate_correlation(self.adata.X, center=center)
         elif robust_se:
-            from .robust_se import _robust_se
+            # Adjacency from robust_se
+            from .robust_se import robust_se_default
             # TODO: add function wrapper that handles indices and power!
-            # Use the robust SE
-            corr = _robust_se(self.V, self.V,
-                              lamb=1e-10, t_cutoff=6.5, abs_t=True)
+            # TODO: allow using harmony instead of PCA
+            # TODO: Separate out the robust_se from the batch correction
+            adjacency = robust_se_default(
+                U=self.U @ np.diag(self.s), V=self.V, B=None,
+                t_cutoff=t_cutoff, abs_t=True)
+
+            # Average it with its transpose to get symmetric adjacency:
+            adjacency = (adjacency + adjacency.T) / 2
+            adjacency.data = np.where(adjacency.data < t_cutoff,
+                                      0, adjacency.data)
+            adjacency = sparse.csr_matrix(adjacency)
+
+            # Correlation estimate:
+            corr = calculate_correlation_estimate(
+                self.U, self.s, self.V, power=0, indices=indices)
         else:
             # Estimate correlation, with a subset of PCs:
             corr = calculate_correlation_estimate(
                 self.U, self.s, self.V, power=power, indices=indices)
-        return(corr)
+        return(corr, adjacency)
 
     def _calculate_correlation_estimate_sd(self, indices=None, power=0):
         # Estimate the std. deviation of the transformed correlation estimate
@@ -319,6 +334,7 @@ class modules_core(object):
                            full_graph_only=False,
                            keep_all_z=False,
                            layout=True,
+                           t_cutoff=6.5,
                            **kwargs):
         # 3. Select which PCs to keep:
         indices = self._select_PCs(filter_covariate=filter_covariate)
@@ -328,8 +344,8 @@ class modules_core(object):
             # Options for constructing correlation
             indices=indices, power=power, raw=raw,
             # Options for thresholding methods:
-            method=method,
-            **kwargs)
+            method=method, t_cutoff=t_cutoff,
+            **kwargs) # TODO: how to separate out kwargs for this vs. below
 
         # Make graph with adjacency instead of correlation:
         self._make_single_graph_object(graph_id, corr=corr, adj=adj, **kwargs)
@@ -338,7 +354,8 @@ class modules_core(object):
         if not adjacency_only and full_graph_only:
             # Compute the full, unaltered, graph for multiplexing,
             # but do not cluster or create modules
-            self.graphs[graph_id].construct_graph(full=True)
+            self.graphs[graph_id].construct_graph(
+                full_graph=True, modules=False, layout=False)
         else:
             # Build the graph, get modules, and annotate genes:
             # TODO: simplify where adata is called (for populate modules):
@@ -352,7 +369,7 @@ class modules_core(object):
                                     # Options for correlation:
                                     indices=None, power=0, raw=False,
                                     # Options for thresholding method:
-                                    method='bivariate',
+                                    method='bivariate', t_cutoff=6.5,
                                     # TODO: Add adjacency options here:
                                     **kwargs):
         """
@@ -363,8 +380,9 @@ class modules_core(object):
         """
         # 4. Calculate the correlation:
         robust_se = (method == 'robust_se')
-        corr = self._calculate_correlation(
-            indices=indices, power=power, raw=raw, robust_se=robust_se)
+        corr, adjacency = self._calculate_correlation(
+            indices=indices, power=power, raw=raw,
+            robust_se=robust_se, t_cutoff=t_cutoff)
         # sd calculation if needed, but robust_se is highly preferable:
         if method == 'sd' and not raw:
             # TODO: update function to use correct indices and power!
@@ -375,7 +393,8 @@ class modules_core(object):
 
         # 5. Threshold the correlation using adjacency object:
         adj = adjacency_matrix(
-            corr=corr, corr_sd=corr_sd, method=method,
+            corr=corr, adjacency=adjacency,
+            corr_sd=corr_sd, method=method,
             labels=self.genes, margin=self.margin,
             **kwargs)
 
@@ -384,11 +403,10 @@ class modules_core(object):
 
 
     # TODO: Simplify inheritance of kwargs params:
-    def _make_single_graph_object(self, graph_id, corr, adj,
-                                  graph=None, # TODO: if have graph, skip steps
-                                  edge_weight=None,
-                                  min_size=4,
-                                  layout_method="fr"):
+    def _make_single_graph_object(self, graph_id, corr,
+                                  adj=None, graph=None, # Either one needed
+                                  edge_weight=None, min_size=4,
+                                  layout_method="fr", **kwargs):
         self.graphs[graph_id] = gene_graph(corr, adj=adj,
                                            graph=graph,
                                            genes=self.genes,
@@ -413,6 +431,7 @@ class modules_core(object):
             self, power_list=power_list, keep_all_z=keep_all_z,
             filter_covariate=filter_covariate, **kwargs)
         # Multiplex cluster the graphs:
+        # NOTE: Leiden partition here, could move to graph utils, add methods
         membership = partition_graphlist(graphlist, resolution=resolution)
         # Calculate the average correlation:
         corr = self._get_average_correlation(graphs)
@@ -441,7 +460,9 @@ class modules_core(object):
         # 1. Combine all of the graphs together:
         graph = self._combine_graphlist(graph_id, graphlist, corr, **kwargs)
         # 2. Partition to modules
-        self._partition_multigraph(graph_id, graph, graphlist, membership)
+        self.graphs[graph_id]._partition_multigraph(
+            graph, graphlist, membership, method='leiden')
+        # self._partition_multigraph(graph_id, graph, graphlist, membership)
         # 3. Layout the merged graph:
         self.graphs[graph_id].layout_graph()
         # 4. Populate modules with all genes:
@@ -464,18 +485,6 @@ class modules_core(object):
         self.graphs[graph_id].kept_genes = graph.vs['name']
         return(graph)
 
-    # TODO: Could most of this construction into graph object instead
-    def _partition_multigraph(self, graph_id, graph, graphlist, membership):
-        # Turn multiplex partition into modules
-        # NOTE: Must reorder due to different order in the merge:
-        gn = np.array(graphlist[0].vs['name'])
-        reord = np.array([np.where(gn == x)[0][0] for x in graph.vs['name']])
-        # gn[reord] == graph.vs['name']  # If we want to check correct.
-        membership = np.array(membership)[reord]
-        ptns = np.unique(membership)
-        partition = [np.where(membership == x)[0] for x in ptns]
-        self.graphs[graph_id].get_modules_from_partition(partition, 'leiden')
-
     def get_k_stats(self, k_list, power=0, resolution=None, **kwargs):
         """Get statistics on # genes and # modules for each k setting."""
         ngenes = []
@@ -484,11 +493,13 @@ class modules_core(object):
             ind = np.arange(k)
             graph_id = 'test_k' + str(k)
             # Build the graph - don't layout, but get modules:
-            corr_subset = self._calculate_correlation(indices=ind, power=power)
+            corr_subset, _ = self._calculate_correlation(
+                indices=ind, power=power)
             # TODO: MAKE ADJACENCY INSTEAD Here
             raise NotImplementedError
             try:
-                self._make_single_graph_object(graph_id, corr=corr_subset, **kwargs)
+                self._make_single_graph_object(
+                    graph_id, corr=corr_subset, **kwargs)
                 self.graphs[graph_id].construct_graph(
                     resolution=resolution, layout=False)
                 # Store number of genes and modules:

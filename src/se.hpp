@@ -66,7 +66,7 @@ Eigen::SparseMatrix<float> intra_robust_se(const Eigen::MatrixBase<TU> &U,
 					   bool abs_cutoff=false)
 {
 	const Eigen::VectorXf sigma_2 = U.colwise().squaredNorm().template cast<float>().eval();
-	const Eigen::ArrayXf sigma_2_inv = (1. / (sigma_2.array() + lambda*lambda));
+	const Eigen::ArrayXf sigma_2_inv = 1. / sigma_2.array();
 	const Eigen::DiagonalMatrix<float, Eigen::Dynamic> tuui = sigma_2_inv.matrix().asDiagonal();
 	const Eigen::DiagonalMatrix<typename TV::Scalar, Eigen::Dynamic> tuuituu = (sigma_2.array() / (sigma_2.array() + lambda*lambda)).matrix().template cast<typename TV::Scalar>().asDiagonal();
 	Eigen::SparseMatrix<float> M(V.cols(), V.cols());

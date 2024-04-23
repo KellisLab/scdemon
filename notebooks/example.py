@@ -43,8 +43,17 @@ mod = sm.modules_core(adata,
                       svd_k=max_k, filter_expr=0.05)
 mod.setup()  # Setup the object
 
-# # 1. Make a graph using robust_se:
-# mod.make_graph('rse', method='robust_se')
+# For testing graph construction:
+mod.make_graph('rse', method='robust_se', t_cutoff=4.5, scale=0.75)
+graph_id = 'rse'
+pl.plot_genes(mod, graph_id, attr="leiden", show_labels=True, width=16)
+pl.plot_heatmap_avgexpr(mod, graph_id, cvlist=['leiden'], attr="leiden")
+pl.plot_umap_grid(mod, graph_id)
+
+
+# mod.make_graph('merge', multigraph=True, power=[0,.5,1])
+# mod.make_graph('raw', raw=True)
+# mod.make_graph('subset', filter_covariate="leiden")
 
 
 # Make graph using the selected parameters for basic analysis:
@@ -106,4 +115,6 @@ for graph_id in graphlist:
     pl.plot_heatmap_avgexpr(mod, graph_id, cvlist=['leiden'], attr="leiden")
     pl.plot_umap_grid(mod, graph_id)
 
+
+# TODO: Add get_k_stats test too
 

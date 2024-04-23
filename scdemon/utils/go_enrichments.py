@@ -3,12 +3,10 @@
 import logging
 
 # For GO annotations (needs connection):
-from gprofiler import GProfiler
-
-
 def get_goterms(obj, graph_id, attr="leiden", organism="hsapiens",
                 sources=["GO:CC", "GO:BP", "GO:MF",
                          "REAC", "WP", "KEGG", "CORUM"]):
+    from gprofiler import GProfiler
     # NOTE: Needs to be able to connect to internet to run
     # TODO: Add exception/failure mode if not able to connect
     obj.gp = GProfiler(return_dataframe=True)
