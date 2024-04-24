@@ -31,9 +31,7 @@ python:
   install:
     - method: pip
       path: .
+      extra_requirements:
+        - sphinx-rtd-theme
 
-# Example
-# extra_requirements:
-# - doc
-# - leiden
 # - requirements: docs/requirements.txt
