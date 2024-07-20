@@ -36,7 +36,7 @@ logging.info("Loaded example dataset")
 max_k = 100
 mod = sm.modules(adata, suffix=tag, # Tagline for plots
                  # Options for graph creation:
-                 svd_k=max_k, filter_expr=0.05)
+                 k=max_k, filter_expr=0.05)
 mod.setup()  # Setup the object
 
 
@@ -72,11 +72,11 @@ pl.plot_gene_logfc(mod, graph_id, attr=covariate,
                    show_labels=False, width=16, fc_cut=2)
 
 # Plot correlation of SVD components with covariates:
-cvlist = ["n_genes", "leiden"]
-pl.plot_svd_corr(mod, cvlist)
+covariate_list = ["n_genes", "leiden"]
+pl.plot_svd_corr(mod, covariate_list)
 
 # Plot the average expression of leiden modules on covariates:
-pl.plot_heatmap_avgexpr(mod, graph_id, cvlist=cvlist, attr="leiden")
+pl.plot_heatmap_avgexpr(mod, graph_id, covariate_list=covariate_list, attr="leiden")
 
 
 # Make some other graphs based on different methods:
@@ -96,7 +96,7 @@ mod.make_graph('subset', filter_covariate="leiden")
 graphlist = ['merge', 'subset', 'raw']
 for graph_id in graphlist:
     pl.plot_genes(mod, graph_id, attr="leiden", show_labels=True, width=16)
-    pl.plot_heatmap_avgexpr(mod, graph_id, cvlist=['leiden'], attr="leiden")
+    pl.plot_heatmap_avgexpr(mod, graph_id, covariate_list=['leiden'], attr="leiden")
     pl.plot_umap_grid(mod, graph_id)
 
 

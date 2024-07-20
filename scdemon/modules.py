@@ -25,62 +25,80 @@ from pandas.api.types import is_categorical_dtype
 
 from anndata import AnnData
 
+
 class modules(object):
+    """\
+        Calculate gene modules from a single-cell anndata object
     """
-    Calculate gene modules from anndata or stand-alone matrix.
-    """
+    # TODO: Also implement from stand-alone matrix, easier to port
 
-    def __init__(self,
-                 adata,
-                 X=None, meta=None, # TODO: Add alternative if no adata.obs
+    def __init__(self, adata,
                  U=None, s=None, V=None, # If we want to pass these in
-                 suffix=None,
+                 suffix='',
                  # Arguments for setup:
-                 seed=1,
-                 filter_expr=0.05,
-                 svd_k=100, # TODO: change to k, change example code to match
+                 seed=1, k=100, filter_expr=0.05,
                  keep_first_PC=False,
-                 process_covariates=False, # Default of processing covars
-                 cv_cutoff=0.4,
-                 ):
-        """
-        Initialize gene modules object.
-        ---------------
+                 # Default of processing covars
+                 process_covariates=False, covariate_cutoff=0.4):
+        """\
+            Parameters
+            ----------
+            adata : AnnData
+                Single-cell dataset
+            U : np.array
+                SVD left singular vectors of size ``(n_obs, k)``.
+                If all of ``U``, ``s``, ``V`` are not provided, will re-calculate SVD on given data.
+            s : np.array
+                SVD singular values of size ``(k)``.
+            V : np.array
+                SVD right singular vectors of size ``(k, n_var)``.
+            suffix : str
+                Unique suffix for saving image and table filenames
+            seed : int
+                Seed, for `np.random.seed`
+            k : int
+                Truncate SVD to k components when estimating correlation
+            filter_expr : float
+                Remove all genes whose fraction of non-zero values is below
+                the given cutoff (default is ``0.05``).
+            keep_first_PC : bool
+                Keep the first PC when estimating the correlation.
+            process_covariates : bool
+                Compare the metadata covariates to the PCs.
+            covariate_cutoff : float
+                covariate_cutoff
 
-        test
-        :param adata: AnnData object containing single-cell dataset
-
+            Returns
+            -------
+            Object with which to compute gene modules
         """
+
         # TODO: implement stand-alone matrix
         # Dataset:
         self.adata = adata
-        self.X = X
-
-        # Reduction
         self.U = U
         self.s = s
         self.V = V
 
         # Metadata
-        self.meta = meta
-        self.cvlist = self.adata.obs.columns # TODO: use meta if using X
-        self.genes = self.adata.var_names  # labels, TODO different if X
+        self.covariate_list = self.adata.obs.columns
+        self.genes = self.adata.var_names  # labels
 
         # Tagline
-        self.suffix = suffix if suffix is not None else ''
+        self.suffix = suffix
 
         # Arguments for setup steps (up to correlation estimate)
-        self.k = svd_k
+        self.k = k
         self.filter_expr = filter_expr
         self.seed = seed
         self.keep_first_PC = keep_first_PC
         self.process_covariates = process_covariates
-        self.cv_cutoff = cv_cutoff
+        self.covariate_cutoff = covariate_cutoff
 
         # Additional metadata / files:
         self.graphs = {}  # Store computed graphs
-        self.cv_mats = {} # For correlation of covariates vs. PCs
-        self.cv_pc_ind = {} # For filtering PCs by covariate
+        self.covariate_matrices = {} # For correlation of covariates vs. PCs
+        self.covariate_pc_ind = {} # For filtering PCs by covariate
 
         # Initialize with the random seed
         np.random.seed(self.seed)
@@ -152,11 +170,11 @@ class modules(object):
         # TODO: allow invert?
         # TODO: allow multiple components (e.g. celltype + region)
         if filter_covariate is not None and \
-                filter_covariate in self.cvlist:
+                filter_covariate in self.covariate_list:
             # Update if it wasn't run originally
-            if filter_covariate not in self.cv_pc_ind.keys():
+            if filter_covariate not in self.covariate_pc_ind.keys():
                 self._setup_covariate_PC_comparison()
-            indices = self.cv_pc_ind[filter_covariate]
+            indices = self.covariate_pc_ind[filter_covariate]
             if not self.keep_first_PC:
                 indices = indices[indices != 0]
         else:
@@ -169,14 +187,15 @@ class modules(object):
 
     def _calculate_covariate_svd_correlation(self):
         """Calculate the correlation of covariates with PCs."""
-        self.cv_mats = calculate_svd_covar_corr(
-            self.U.T, self.adata.obs, self.cvlist, cv_mats=self.cv_mats)
+        self.covariate_matrices = calculate_svd_covar_corr(
+            self.U.T, self.adata.obs, self.covariate_list,
+            covariate_matrices=self.covariate_matrices)
 
     def _assign_covariates_to_PCs(self, invert=False):
         """Calculate which components are correlated with each covariate."""
         # self._calculate_covariate_svd_correlation()
-        for covar in self.cvlist:
-            cmat = self.cv_mats[covar].T
+        for covar in self.covariate_list:
+            cmat = self.covariate_matrices[covar].T
             # TODO: fix this normalization issue
             sfact = np.max(self.s) / self.s
             cmat = cmat * sfact[np.newaxis, :]
@@ -184,11 +203,11 @@ class modules(object):
             # Select indices for each covariate
             if invert:
                 # Ones not strongly associated with the covariate
-                ind = np.where(cmx < self.cv_cutoff)[0]
+                ind = np.where(cmx < self.covariate_cutoff)[0]
             else:
                 # Ones strongly associated with the covariate
-                ind = np.where(cmx >= self.cv_cutoff)[0]
-            self.cv_pc_ind[covar] = ind
+                ind = np.where(cmx >= self.covariate_cutoff)[0]
+            self.covariate_pc_ind[covar] = ind
 
     # TODO: Add PC adjustment if necessary
     def _adjust_PCs(self):
@@ -197,19 +216,19 @@ class modules(object):
     # TODO: Auxiliary, try to move out of this object
     def _calculate_covariate_lengths(self):
         """Process covariates, for plotting avg heatmap and vs SVD."""
-        if not hasattr(self, 'cv_lengths'):
-            self.cv_lengths = {}
-            self.cv_ticks = {}
-        for covar in self.cvlist:
-            if covar not in self.cv_lengths.keys():
+        if not hasattr(self, 'covariate_lengths'):
+            self.covariate_lengths = {}
+            self.covariate_ticks = {}
+        for covar in self.covariate_list:
+            if covar not in self.covariate_lengths.keys():
                 cvcol = self.adata.obs[covar]
                 if is_categorical_dtype(cvcol):
-                    covar_dummy = pd.get_dummies(cvcol)  # To match cv_mats
-                    self.cv_lengths[covar] = covar_dummy.shape[1]
-                    self.cv_ticks[covar] = covar_dummy.columns.tolist()
+                    covar_dummy = pd.get_dummies(cvcol)  # To match covariate_matrices
+                    self.covariate_lengths[covar] = covar_dummy.shape[1]
+                    self.covariate_ticks[covar] = covar_dummy.columns.tolist()
                 else:
-                    self.cv_lengths[covar] = 1
-                    self.cv_ticks[covar] = False
+                    self.covariate_lengths[covar] = 1
+                    self.covariate_ticks[covar] = False
 
     # TODO: put the majority of the correlation function into an import
     def _calculate_correlation(self, indices=None, center=False, power=0,
@@ -250,16 +269,34 @@ class modules(object):
     # 8. Layout graph
     # 9. Downstream tasks
     # 10. Benchmarking
+    # TODO: Add all of the other parameters:
     def make_graph(self, graph_id, multigraph=False,
                    # For PC selection + correlation estimate:
                    power=0, **kwargs):
+        """\
+            Creates a graph under ``.graphs[graph_id]``
+
+            Parameters
+            ----------
+            graph_id : str
+                Unique name for storing/accessing the graph
+            multigraph: bool
+                Create from one graph or multiple graphs
+            power : float | list
+                Power parameter, either single or multiple or list of powers
+
+
+            method : str
+                Thresholding method
+                ``'bivariate'``
+                    default, threshold based on bivariate spline fit to gene-gene sparsity
+                ``'cutoff'``
+                    single cutoff across full matrix
+                ``'sd'``
+                    based on estimated sd, expensive
         """
-        Make graph
-        ---
-        multigraph: multigraph or single.
-        power:      power for eigenvalues
-        method:     thresholding method (cutoff, bivariate, sd)
-        """
+        if type(power) is list:
+            multigraph = True
         if multigraph:
             self._make_merged_graph(graph_id, power_list=power, **kwargs)
         else:

@@ -58,7 +58,7 @@ adata = sc.datasets.pbmc3k()
 recipe_full(adata, preprocess=True, annotate=True)
 
 # Make the modules handling object:
-mod = sm.modules_core(adata, suffix='pbmc_example', svd_k=100)
+mod = sm.modules_core(adata, suffix='pbmc_example', k=100)
 mod.setup()
 
 # Build a gene-graph graph and learn modules:
