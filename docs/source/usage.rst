@@ -40,5 +40,5 @@ The full list of dependencies is as follows:
     scanpy, anndata,
     seaborn, matplotlib,
     gprofiler-official,
-    python-igraph, adjustText,
+    igraph, adjustText,
     numba
