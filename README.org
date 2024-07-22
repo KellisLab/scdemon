@@ -1,7 +1,15 @@
 * scdemon: single-cell decorrelated module networks
 ** Installation
-**** Python package:
+**** Conda environment:
+#+BEGIN_SRC bash
+# Minimal
+conda create -n scdemonpy -c conda-forge pip numpy pandas scipy igraph umap-learn leidenalg scanpy seaborn matplotlib
 
+# If you want to run GO enrichment:
+conda install -n scdemonpy -c bioconda gprofiler-official
+#+END_SRC
+
+**** Python package:
 Install the python package with pip directly from github as: 
 #+BEGIN_SRC sh
 pip install git+https://github.com/KellisLab/scdemon
@@ -12,18 +20,8 @@ For a fresh install, or if version number hasn't changed, first run: ~pip uninst
 Alternatively, install by cloning the directory as:
 
 #+BEGIN_SRC sh
-git clone git@github.com:KellisLab/scdemon.git
+git clone https://github.com/KellisLab/scdemon.git
 pip install ./scdemon
-#+END_SRC
-
-
-**** Conda environment:
-#+BEGIN_SRC bash
-# Minimal:
-conda create -n scdemonpy -c conda-forge numpy pandas scipy igraph umap-learn leidenalg scanpy seaborn matplotlib
-
-# If you want to run GO enrichment:
-conda install -n scdemonpy -c bioconda gprofiler-official
 #+END_SRC
 
 
@@ -31,8 +29,7 @@ conda install -n scdemonpy -c bioconda gprofiler-official
 
 #+BEGIN_SRC bash
 # Core:
-numpy, pandas, scipy, igraph, umap-learn, 
-leidenalg, scanpy, seaborn, matplotlib
+numpy, pandas, scipy, igraph, umap-learn, leidenalg, scanpy, seaborn, matplotlib
 
 # Optional:
 anndata, gprofiler-official, adjustText
@@ -40,9 +37,7 @@ anndata, gprofiler-official, adjustText
 
 
 ** Usage
-See Documentation: https://scdemon.readthedocs.io/
-
-See ~notebooks/example.py~ for a more complete example.
+See documentation: https://scdemon.readthedocs.io/. Also see ~notebooks/example.py~ for a more complete example.
 
 Basic example using ~scanpy~:
 
