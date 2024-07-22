@@ -76,5 +76,5 @@ gpres = sm.get_goterms(mod, graph_id)
 #+END_SRC
 
 
-Cite: Mathys*, Boix*, Akay*, et al., [_Single-cell multiregion dissection of Alzheimer’s disease_](https://www.nature.com/articles/s41586-024-07606-7)
+*Cite:* Mathys*, Boix*, Akay*, et al. [[https://www.nature.com/articles/s41586-024-07606-7][Single-cell multiregion dissection of Alzheimer’s disease]]
 
