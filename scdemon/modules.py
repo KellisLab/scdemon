@@ -9,6 +9,7 @@ from .utils import (
     calculate_correlation_estimate,
     calculate_correlation_estimate_sd,
     calculate_svd_covar_corr, # Covariates
+    calculate_margin_genes,
     # Multigraph
     make_graphlist, partition_graphlist,
 )
@@ -31,7 +32,6 @@ class modules(object):
         Calculate gene modules from a single-cell anndata object
     """
     # TODO: Also implement from stand-alone matrix, easier to port
-
     def __init__(self, adata,
                  U=None, s=None, V=None, # If we want to pass these in
                  suffix='',
@@ -72,8 +72,6 @@ class modules(object):
             -------
             Object with which to compute gene modules
         """
-
-        # TODO: implement stand-alone matrix
         # Dataset:
         self.adata = adata
         self.U = U
@@ -103,23 +101,18 @@ class modules(object):
         # Initialize with the random seed
         np.random.seed(self.seed)
 
-    # TODO: Split fixed vs. repeated tasks (for multiple graphs)
-
-    # Part I. Setup data > PCs > correlation estimate
-    # -----------------------------------------------
-    # TODO: Allow options:
-    # TODO: Possibly separate into setup + calculate correlation,
-    # so can we can run in multiple times, make multiple graphs
     def setup(self):
-        """Set up the dataset and get the correlation estimate."""
+        """\
+            Set up the dataset. Filter genes, calculate PCA, and process covariates.
+            PCA defaults to ``adata.obsm['X_pca']`` if available.
+            Otherwise uses ``sc.tl.pca`` from ``scanpy``
+        """
         # 1a. normalize (done outside of this)
         self._filter_by_genes() # 1b. subset to genes above expr cutoff
         self._calculate_PCA() # 2. perform SVD or get pre-computed SVD
         if self.process_covariates:
             self._setup_covariate_PC_comparison() # 2a. to filter components
-        self._adjust_PCs() # 3. PC adjustment # TODO: Put before or after 2a?
 
-    # NOTE: Filter in place on modules object
     def _filter_by_genes(self):
         """Filter dataset to genes expressed above a given % cutoff."""
         self.margin = calculate_margin_genes(self.adata.X)
@@ -140,11 +133,11 @@ class modules(object):
             return True
 
     def _calculate_PCA(self, center=False):
-        """
-        Calculate PCA components U, s, V if they are not already computed.
-        ---
-        Defaults to X_pca in adata.obsm if available.
-        Otherwise uses sc.tl.pca
+        """\
+            Calculate PCA components U, s, V if they are not already computed.
+            ---
+            Defaults to X_pca in adata.obsm if available.
+            Otherwise uses sc.tl.pca
         """
         if not self._check_PCA():
             if ("X_pca" not in self.adata.obsm.keys()) or \
@@ -157,7 +150,6 @@ class modules(object):
             ev = self.adata.uns["pca"]["variance"]
             self.s = np.sqrt(ev * (self.adata.shape[0] - 1))
             self.U = self.adata.obsm['X_pca'] / self.s[np.newaxis, :]
-            # TODO: alternatively use X_pca from harmony (instead of U*s)
 
     def _setup_covariate_PC_comparison(self):
         # Prep for covariate selection:
@@ -166,9 +158,8 @@ class modules(object):
         self._calculate_covariate_lengths()  # For plotting, later
 
     def _select_PCs(self, filter_covariate=None, max_k=None):
-        # Select SVD components to keep in the correlation calculation
-        # TODO: allow invert?
-        # TODO: allow multiple components (e.g. celltype + region)
+        """Select SVD components to keep in the correlation calculation."""
+        # TODO: Allow invert and allow multiple components (e.g. celltype + region)
         if filter_covariate is not None and \
                 filter_covariate in self.covariate_list:
             # Update if it wasn't run originally
@@ -182,7 +173,7 @@ class modules(object):
                 np.arange(1, self.U.shape[1])
         if max_k is not None:
             indices = indices[indices <= max_k]
-        logging.debug(indices) # TODO: pretty print, maybe #k
+        logging.debug(indices)
         return(indices)
 
     def _calculate_covariate_svd_correlation(self):
@@ -209,11 +200,6 @@ class modules(object):
                 ind = np.where(cmx >= self.covariate_cutoff)[0]
             self.covariate_pc_ind[covar] = ind
 
-    # TODO: Add PC adjustment if necessary
-    def _adjust_PCs(self):
-        pass
-
-    # TODO: Auxiliary, try to move out of this object
     def _calculate_covariate_lengths(self):
         """Process covariates, for plotting avg heatmap and vs SVD."""
         if not hasattr(self, 'covariate_lengths'):
@@ -230,13 +216,12 @@ class modules(object):
                     self.covariate_lengths[covar] = 1
                     self.covariate_ticks[covar] = False
 
-    # TODO: put the majority of the correlation function into an import
-    def _calculate_correlation(self, indices=None, center=False, power=0,
-                               raw=False):
-        """
-        Calculate the correlation between the genes.
-        ---
-        Calculates either raw or estimated, using the SVD and selected PCs.
+    def _calculate_correlation(self, indices=None, center=False,
+                               power=0, raw=False):
+        """\
+            Calculate the correlation between the genes.
+            ---
+            Calculates either raw or estimated, using the SVD and selected PCs.
         """
         adjacency = None
         if raw:
@@ -250,29 +235,14 @@ class modules(object):
 
     def _calculate_correlation_estimate_sd(self, indices=None, power=0):
         # Estimate the std. deviation of the transformed correlation estimate
-        # TODO: Remove long-term and replace with bootstraps over batches
-
-        # TODO: Add indices and power variables!
+        # Samples different sets of SVD components. Use bivariate over this.
+        # NOTE: Remove long-term and replace with bootstraps over batches
         _, corr_sd = calculate_correlation_estimate_sd(
-            self.U, self.s, self.V, nperm=50, seed=self.seed)
+            self.U, self.s, self.V, nperm=50, seed=self.seed,
+            indices=indices, power=power)
         return corr_sd
 
-
-    # Part II. Functions for graph object, including correlation calculation:
-    # -----------------------------------------------------------------------
-    # Building adjacency > graph > modules
-    # Make graph object > construct_graph does all of these:
-    # 5. Build adjacency matrix
-    # 6. Filter k-NN (thresholding) > adjacency
-    # 6a. Make graph
-    # 7. Perform community detection (NMF, BigClam, Leiden)
-    # 8. Layout graph
-    # 9. Downstream tasks
-    # 10. Benchmarking
-    # TODO: Add all of the other parameters:
-    def make_graph(self, graph_id, multigraph=False,
-                   # For PC selection + correlation estimate:
-                   power=0, **kwargs):
+    def make_graph(self, graph_id, multigraph=False, power=0, **kwargs):
         """\
             Creates a graph under ``.graphs[graph_id]``
 
@@ -285,15 +255,34 @@ class modules(object):
             power : float | list
                 Power parameter, either single or multiple or list of powers
 
-
             method : str
-                Thresholding method
+                Thresholding method for graph:
+
                 ``'bivariate'``
                     default, threshold based on bivariate spline fit to gene-gene sparsity
                 ``'cutoff'``
                     single cutoff across full matrix
                 ``'sd'``
                     based on estimated sd, expensive
+            filter_covariate : str
+                Filter SVD components correlated with a specific covariate
+            raw : bool
+                Use raw correlation
+            resolution : float
+                Resolution for clustering
+            adjacency_only : bool
+                Only run adjacency (default False)
+            full_graph_only : bool
+                Compute the full, unaltered, graph for multiplexing,
+                but do not cluster or create modules
+            keep_all_z : bool
+                When computing full graph, don't threshold, keep dense matrix
+            layout : bool
+                Lay out graph (default True)
+
+            **kwargs
+                Any args for adjacency_matrix or gene_graph
+
         """
         if type(power) is list:
             multigraph = True
@@ -306,7 +295,9 @@ class modules(object):
     # TODO: Simplify inheritance of kwargs params:
     def _make_single_graph(self, graph_id,
                            # Correlation options:
-                           power=0, filter_covariate=None, raw=False,
+                           power=0,
+                           filter_covariate=None,
+                           raw=False,
                            # Graph options:
                            method='bivariate', # Method for threshold
                            resolution=2,
@@ -324,8 +315,7 @@ class modules(object):
             # Options for constructing correlation
             indices=indices, power=power, raw=raw,
             # Options for thresholding methods:
-            method=method,
-            **kwargs) # TODO: how to separate out kwargs for this vs. below
+            method=method, **kwargs)
 
         # Make graph with adjacency instead of correlation:
         self._make_single_graph_object(graph_id, corr=corr, adj=adj, **kwargs)
@@ -338,20 +328,16 @@ class modules(object):
                 full_graph=True, modules=False, layout=False)
         else:
             # Build the graph, get modules, and annotate genes:
-            # TODO: simplify where adata is called (for populate modules):
             self.graphs[graph_id].construct_graph(
                 resolution=resolution, layout=layout)
             self.graphs[graph_id].populate_modules(self.adata, attr='leiden')
             self.graphs[graph_id].match_genes_to_modules(attr='leiden')
 
-    # TODO: Make corr and threshold corr as two different parts:
     def _construct_adjacency_matrix(self,
                                     # Options for correlation:
                                     indices=None, power=0, raw=False,
                                     # Options for thresholding method:
-                                    method='bivariate',
-                                    # TODO: Add adjacency options here:
-                                    **kwargs):
+                                    method='bivariate', **kwargs):
         """
         Construct the adjacency matrix for the given parameters.
         ---
@@ -362,7 +348,6 @@ class modules(object):
         corr, adjacency = self._calculate_correlation(
             indices=indices, power=power, raw=raw)
         if method == 'sd' and not raw:
-            # TODO: update function to use correct indices and power!
             corr_sd = self._calculate_correlation_estimate_sd(
                 indices=indices, power=power)
         else:
@@ -378,8 +363,6 @@ class modules(object):
         # Return the adjacency object to construct graph
         return(corr, adj)
 
-
-    # TODO: Simplify inheritance of kwargs params:
     def _make_single_graph_object(self, graph_id, corr,
                                   adj=None, graph=None, # Either one needed
                                   edge_weight=None, min_size=4,
@@ -392,18 +375,14 @@ class modules(object):
                                            min_size=min_size)
 
     # Make a merged graph from multiple decorrelation resolutions:
-    # TODO: Assign modules later should be using z-scores
-    # TODO: If given new z-score, re-threshold all graphs
     def _make_merged_graph(self, graph_id,
                            power_list=[0, .25, .5, .75, 1],
                            filter_covariate=None,
                            resolution=2,
-                           keep_all_z=False, # TODO: default to True?
+                           keep_all_z=False, # Expensive but better
                            **kwargs):
         """Make a merged graph from a list of many parameters."""
         # Make the full list of graphs at each power:
-        # TODO: Move make_graphlist into modules?
-        # TODO fix, with changes to graphs
         graphlist, graphs = make_graphlist(
             self, power_list=power_list, keep_all_z=keep_all_z,
             filter_covariate=filter_covariate, **kwargs)
@@ -418,19 +397,14 @@ class modules(object):
             graph_id, graphlist, corr=corr, membership=membership, **kwargs)
 
     def _get_average_correlation(self, graphs):
-        # TODO: Corr is correlation if not loaded as zcutoff.....!
-        # NOTE: Extended assignment is always better with zcutoff
-        # TODO: Standardize graph: use cutoff to put matrix -> zmat directly
         corr = self.graphs[graphs[0]].corr
         for graph in graphs[1:]:
-            # Scale graphs appropriately:
+            # Scale graphs to per-graph max:
             maxval = np.max(np.abs(self.graphs[graph].corr))
             corr += (self.graphs[graph].corr / maxval)
         corr = corr / (len(graphs) * 1.0)
         return(corr)
 
-    # TODO: should we have this only be the graph object (like single graph
-    # object) or full processing, as it is now. If so, rename
     def _make_merged_graph_object(self, graph_id, graphlist, corr,
                                   membership, **kwargs):
         """Combine all graphs, partition modules, layout, and populate."""
@@ -462,11 +436,40 @@ class modules(object):
         self.graphs[graph_id].kept_genes = graph.vs['name']
         return(graph)
 
-    # TODO: could update to work with multigraph, or any set of graph options
     def get_k_stats(self, k_list, power=0, resolution=None,
                     raw=False, method='bivariate', filter_covariate=None,
                     **kwargs):
-        """Get statistics on # genes and # modules for each k setting."""
+        """\
+            Get statistics on # genes and # modules for each number of SVD components (k)
+
+            Parameters
+            ----------
+            k_list : list
+                List of SVD component cutoffs
+            power : float
+                Power parameter, here only single value
+            raw : bool
+                Use raw correlation
+            resolution : float
+                Resolution for clustering
+            method : str
+                Thresholding method for graph:
+
+                ``'bivariate'``
+                    default, threshold based on bivariate spline fit to gene-gene sparsity
+                ``'cutoff'``
+                    single cutoff across full matrix
+                ``'sd'``
+                    based on estimated sd, expensive
+            filter_covariate : str
+                Filter SVD components correlated with a specific covariate
+            **kwargs
+                Extended arguments for adjacency_matrix or gene_graph
+
+            Returns
+            -------
+            ``ngenes, nmodules`` - Lists of number of genes and modules identified at each setting of k
+        """
         ngenes = []
         nmodules = []
         for k in k_list:
@@ -500,24 +503,78 @@ class modules(object):
     # Utilities for working directly on a specific graph, maybe not necessary
     # -----------------------------------------------------------------------
     def recluster_graph(self, graph_id, resolution=None):
-        """Re-cluster a graph with a different resolution."""
+        """\
+            Re-cluster a graph with a different resolution.
+
+            Parameters
+            ----------
+            graph_id : str
+                Unique name for storing/accessing the graph
+            resolution : float
+                Resolution for clustering
+        """
         # NOTE could update to store multiple modules at different resolution
         self.graphs[graph_id].calculate_gene_modules(resolution=resolution)
 
     def get_modules(self, graph_id, attr="leiden", print_modules=False):
-        """Get list of modules from graph and clustering."""
+        """\
+            Get list of modules from graph and clustering.
+
+            Parameters
+            ----------
+            graph_id : str
+                Unique name for storing/accessing the graph
+            attr : str
+                Modules name within the graph ('leiden' is only current supported method)
+            print_modules : bool
+                Whether to print modules at the same time
+
+            Returns
+            -------
+            Dictionary of genes in each module in the graph
+        """
         modules = self.graphs[graph_id].get_modules(
             attr=attr, adata=self.adata, print_modules=print_modules)
         return modules
 
     def get_module_assignment(self, graph_id, attr="leiden"):
-        """Get module assignment for each gene as a pandas DataFrame."""
+        """\
+            Get module assignment for each gene as a pandas DataFrame.
+
+            Parameters
+            ----------
+            graph_id : str
+                Unique name for storing/accessing the graph
+            attr : str
+                Modules name within the graph ('leiden' is only current supported method)
+
+            Returns
+            -------
+            ``pandas.DataFrame`` with gene to module assignments
+        """
         mdf = self.graphs[graph_id].get_module_assignment(
             attr=attr, adata=self.adata)
         return mdf
 
     def find_gene(self, graph_id, gene, return_genes=True, print_genes=True):
-        """Find module corresponding to a gene."""
+        """\
+            Find the module containing a specific gene.
+
+            Parameters
+            ----------
+            graph_id : str
+                Unique name for storing/accessing the graph
+            gene : str
+                Gene to look up in the modules
+            return_genes : bool
+                Whether to return genes in the module
+            print_genes : bool
+                Whether to print genes at the same time
+
+            Returns
+            -------
+            If ``return_genes=True`` returns the list of genes in the module that contains the gene in question
+        """
         out = self.graphs[graph_id].find_gene(gene, print_genes=print_genes)
         if return_genes:
             return out
@@ -525,7 +582,22 @@ class modules(object):
     # Function for saving modules from this object level
     def save_modules(self, graph_id, attr="leiden",
                     as_df=True, filedir="./", filename=None):
-        """Save module list for a specific graph as txt or tsv."""
+        """\
+            Save module list for a specific graph as txt or tsv.
+
+            Parameters
+            ----------
+            graph_id : str
+                Unique name for storing/accessing the graph
+            attr : str
+                Modules name within the graph ('leiden' is only current supported method)
+            as_df : bool
+                Write out dataframe instead of a raw list of genes per module
+            filedir : str
+                Directory for file, defaults to ``./``
+            filename : str
+                Name for file overriding default naming scheme.
+        """
         if filename is None:
             filename = filedir + "module_df_" + self.suffix + "_" + \
                 attr + "_" + graph_id
@@ -533,11 +605,5 @@ class modules(object):
 
         self.graphs[graph_id].save_modules(
             attr=attr, as_df=as_df, filename=filename)
-
-def calculate_margin_genes(X):
-    margin = np.mean(X > 0, axis=0).copy()
-    if sparse.issparse(X):
-        margin = np.array(margin)[0]
-    return(margin)
 
 # NOTE: Had pickling __setstate__ and __getstate__ but removed

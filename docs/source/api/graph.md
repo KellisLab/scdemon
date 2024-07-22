@@ -5,12 +5,29 @@
 ```
 
 ```{eval-rst}
-.. autosummary::
-   :nosignatures:
-   :toctree: generated
+.. autoclass:: gene_graph
+   :members:
+   :undoc-members:
+   :special-members: __init__
 
-   gene_graph
-   adjacency_matrix
 ```
+
+
+```{eval-rst}
+.. autoclass:: adjacency_matrix
+   :members:
+   :undoc-members:
+   :special-members: __init__
+
+```
+
+<!-- ```{eval-rst} -->
+<!-- .. autosummary:: -->
+<!--    :nosignatures: -->
+<!--    :toctree: generated -->
+
+<!--    gene_graph -->
+<!--    adjacency_matrix -->
+<!-- ``` -->
 
 

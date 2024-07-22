@@ -4,6 +4,13 @@ import logging
 import numpy as np
 
 
+def calculate_margin_genes(X):
+    margin = np.mean(X > 0, axis=0).copy()
+    if sparse.issparse(X):
+        margin = np.array(margin)[0]
+    return(margin)
+
+
 def triu_mask(A):
     """Get the upper triangular part a matrix."""
     m = A.shape[0]
@@ -70,16 +77,20 @@ def calculate_single_correlation_estimate(U, s, V, power=0, indices=None):
     return(corr_est)
 
 
-def calculate_correlation_estimate_sd(U, s, V, nperm=25, seed=1):
-    """Estimate the sd of correlations by subsampling V."""
-    np.random.seed(seed)  # Reproducible sampling
-    k = U.shape[1]
+def calculate_correlation_estimate_sd(U, s, V, nperm=25, seed=1,
+                                      indices=None, power=0):
+    """Estimate the sd of correlations by subsampling components from V."""
+    np.random.seed(seed)
+    k = U.shape[1] if indices is None else len(indices)
     full_ind = np.random.randint(k, size=(k // 2, nperm))
     corr_est = np.zeros((V.shape[1], V.shape[1], nperm))
     for i in range(nperm):
         logging.debug(i)
+        use_ind = full_ind[:, i]
+        if indices is not None:
+            use_ind = indices[full_ind[:, i]]
         corr_est[:, :, i] = calculate_correlation_estimate(
-            U, s, V, indices=full_ind[:, i])
+            U, s, V, indices=use_ind, power=power)
 
     corr_mean = np.mean(corr_est, axis=-1)
     corr_sd = np.std(corr_est, axis=-1)
