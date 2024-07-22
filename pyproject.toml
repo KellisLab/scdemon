@@ -3,11 +3,6 @@ requires = [
     "setuptools>=60",
     "setuptools-scm>=8.0"]
 
-# [build-system]
-# requires = ["scikit-build-core>=0.3.3"] 
-# build-backend = "scikit_build_core.build"
-# build-backend = "setuptools.build_meta"
-
 [project]
 name = "scdemon"
 version = "0.0.4"
@@ -17,14 +12,10 @@ authors = [{name = "Benjamin James", email = "benjames@mit.edu"},
 license = {file = "LICENSE"}
 requires-python = ">=3.7"
 dependencies = [
-    "numpy", "pandas",
-    "scipy", "tqdm",
-    "igraph", "umap-learn",
-    "leidenalg", "scikit-learn",
-    # Added from original modules, can prune:
-    "scanpy", "anndata",
-    "seaborn", "matplotlib",
-    "igraph", "numba"
+    "numpy", "pandas", 
+    "scipy", "igraph", 
+    "umap-learn", "leidenalg", 
+    "scanpy", "seaborn", "matplotlib"
 ]
 
 [project.urls]
@@ -33,10 +24,7 @@ Source = "https://github.com/kellislab/scdemon"
 Home-page = "https://github.com/kellislab/scdemon"
 
 [project.optional-dependencies]
-test = ["adjustText", "gprofiler-official"]
-
-[tool.scikit-build]
-wheel.expand-macos-universal-tags = true
+test = ["adjustText", "gprofiler-official", "anndata"]
 
 [tool.setuptools]
 packages = ["scdemon", 

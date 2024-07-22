@@ -23,6 +23,30 @@ from .utils_graph_plotting import (
 # Wrapper for plotting either from overall object or from graph:
 def plot_genes(obj, graph_id=None, basis='graph', attr=None,
                color=None, imgdir='./', suffix=None, ext='png', **kwargs):
+    """\
+        Plot all genes in a graph on a graph or UMAP basis
+
+        Parameters
+        ----------
+        obj : gene_graph | modules
+            Object (``gene_graph`` or ``modules``) with modules to plot
+        graph_id : str
+            Name of graph to work with
+        attr : str
+            Name of modules in the graph
+        basis : str
+            Plotting basis, either ``'graph'`` or ``'umap'``
+        color : str | list
+            Color(s) override
+        imgdir : str
+            Directory for images
+        suffix : str
+            Suffix for image filenames
+        ext : str
+            Extension for image (``'png'`` or ``'pdf'``)
+        **kwargs
+            Additional arguments for ``_plot_genes_for_graph``, including ``width``, ``title``, and ``ax``
+    """
     # Check if object is a graph or not:
     if type(obj) is gene_graph:
         _plot_genes_for_graph(obj, basis=basis, attr=attr, color=color,
@@ -99,16 +123,42 @@ def _plot_gene_graph_from_gene_graph(obj, col=None, width=24, plotname=None,
                           adjust_labels=adjust_labels)
 
 
-# TODO: Add plot of arbitrary vectors (e.g. margin)
-# TODO: Figure out to deal with non-categorical
-# TODO: Separate out the gene logfc score compute from the plotting
+# TODO: Improvements here:
+# - Add plot of arbitrary vectors (e.g. margin)
+# - Figure out to deal with non-categorical
+# - Separate out the gene logFC score compute from the plotting
+# - Add colorbar
 def plot_gene_logfc(obj, graph_id, basis='graph', attr="celltype",
-                    fc_cut=2, p_cut=0.05, imgdir='./', **kwargs):
+                    fc_cut=2, p_cut=0.05, cmap = plt.cm.RdYlBu,
+                    imgdir='./', **kwargs):
+    """\
+        Plot logFC for all genes against a specific covariate on a graph or UMAP basis
+
+        Parameters
+        ----------
+        obj : modules
+            Object (``modules``) with graph and modules to plot
+        graph_id : str
+            Name of graph to work with
+        attr : str
+            Name of modules in the graph
+        basis : str
+            Plotting basis, either ``'graph'`` or ``'umap'``
+        fc_cut : float
+            Cap for top and bottom of logFC scale
+        p_cut : float
+            p-value cutoff for the logFC values
+        cmap
+            matplotlib colormap to use (default ``plt.cm.RdYlBu``)
+        imgdir : str
+            Directory for images
+        **kwargs
+            Additional arguments for ``plot_genes``, including ``width``, ``title``, and ``ax``
+    """
     logging.info("Running rank genes on '%s'" % attr)
     sc.tl.rank_genes_groups(obj.adata, attr)
     iscat = obj.adata.obs[attr].dtype.name == "category"
     # Color map:
-    cmap = plt.cm.RdYlBu  # TODO: allow other options
     norm = Normalize(vmin=-fc_cut, vmax=fc_cut)
     # Turn into assignment:
     narr = obj.adata.uns["rank_genes_groups"]["names"]
@@ -120,7 +170,6 @@ def plot_gene_logfc(obj, graph_id, basis='graph', attr="celltype",
     for name in names:
         namestr = attr + "_" + re.sub("[ /]", "_", name)
         logging.info("Plotting for %s" % namestr)
-        # TODO: Pass the list of names + a score to the gene graph instead
         n1 = np.array(narr[name])
         xind = np.array([np.where(n1 == x)[0][0]
                             for x in graph_object.graph.vs["name"]])

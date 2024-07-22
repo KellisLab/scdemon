@@ -1,4 +1,4 @@
-### Plotting
+# Plotting
 
 ```{eval-rst}
 .. module:: scdemon.plotting

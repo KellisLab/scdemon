@@ -1,4 +1,5 @@
 .. _example:
+
 Basic example
 =============
 
@@ -18,6 +19,7 @@ Basic example using one of the :code:`scanpy` datasets:
 
 
 .. TODO: link to modules objects code documentation
+
 Once we have this dataset, we can create an object that handles any modules and graphs derived from it:
 
 .. code-block:: python
@@ -28,6 +30,7 @@ Once we have this dataset, we can create an object that handles any modules and 
 
 
 .. TODO: link to graph code documentation
+
 After this, we build a basic gene-gene graph and learn modules on top of it. Any graph we create is an independent :code:`graph` object under the overarching modules object.
 
 .. code-block:: python
@@ -41,6 +44,7 @@ After this, we build a basic gene-gene graph and learn modules on top of it. Any
 
 
 .. TODO: put some of these plots in the documentation
+
 We can also plot these modules in multiple ways:
 
 .. code-block:: python
@@ -54,6 +58,7 @@ We can also plot these modules in multiple ways:
 
 
 .. TODO: link gprofiler
+
 We can also use :code:`gprofiler-official` to annotate these modules with functional terms:
 
 .. code-block:: python

@@ -7,5 +7,4 @@ API
    modules
    graph
    plotting
-   utils
 

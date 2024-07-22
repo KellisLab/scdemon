@@ -2,6 +2,7 @@ Usage
 =====
 
 .. _installation:
+
 Installation
 ------------
 
@@ -26,19 +27,20 @@ A minimal conda environment for this package includes:
 
 .. code-block:: console
 
-   conda create -n scdemonpy conda-forge::anndata conda-forge::tqdm conda-forge::pip conda-forge::igraph conda-forge::umap-learn conda::scikit-build
+    # Minimal:
+    conda create -n scdemonpy -c conda-forge numpy pandas scipy igraph umap-learn leidenalg scanpy seaborn matplotlib
+
+    # If you want to run GO enrichment:
+    conda install -n scdemonpy -c bioconda gprofiler-official
 
 
 The full list of dependencies is as follows:
 
 .. code-block:: console
 
-    numpy, pandas,
-    scipy, tqdm,
-    igraph, umap-learn,
-    leidenalg, scikit-learn,
-    scanpy, anndata,
-    seaborn, matplotlib,
-    gprofiler-official,
-    igraph, adjustText,
-    numba
+    # Core:
+    numpy, pandas, scipy, igraph, umap-learn, 
+    leidenalg, scanpy, seaborn, matplotlib
+
+    # Optional:
+    anndata, gprofiler-official, adjustText

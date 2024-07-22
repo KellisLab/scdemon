@@ -4,7 +4,6 @@
 import logging
 import numpy as np
 
-import igraph
 from matplotlib import pyplot as plt
 
 
@@ -66,6 +65,7 @@ def _plot_gene_graph_core(graph, layout, assign, plotname=None, col=None,
                           width=24, ax=None, title=None, show_labels=True,
                           frac_labels=1.0, adjust_labels=False):
     """Plot a gene-gene graph."""
+    import igraph
     # Parameters for saving / plotting subplots:
     standalone = (ax is None)
     save_plot = (standalone) and (plotname is not None)

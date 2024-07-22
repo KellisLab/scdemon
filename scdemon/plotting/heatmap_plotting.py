@@ -8,8 +8,6 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 
 
-# TODO: standardize imgdir
-
 # Plot given the calculated matrices and relevant attributes
 def _plot_svd_corr(covariate_list, covariate_hratio, covariate_matrices,
                    covariate_ticks, svec, plotname, cbar=False):
@@ -44,10 +42,26 @@ def _plot_svd_corr(covariate_list, covariate_hratio, covariate_matrices,
 
 
 # Plot from object
-def plot_svd_corr(obj, covariate_list, cbar=False, imgdir='./'):
+def plot_svd_corr(obj, covariate_list, cbar=False, imgdir='./', ext='png'):
+    """\
+        Plot heatmap of correlation between SVD components and metadata covariates
+
+        Parameters
+        ----------
+        obj : modules
+            Object (``modules``) with graph and modules to plot
+        covariate_list : list
+            List of covariates to plot
+        cbar : bool
+            Whether to show colorbar on side
+        imgdir : str
+            Directory where images will go
+        ext : str
+            Extension for image (``'png'`` or ``'pdf'``)
+    """
     obj._calculate_covariate_svd_correlation()
     obj._calculate_covariate_lengths()
-    plotname = imgdir + "svd_corr_" + obj.suffix + ".png"
+    plotname = imgdir + "svd_corr_" + obj.suffix + "." + ext
     covariate_hratio = [obj.covariate_lengths[covar]
                         for covar in covariate_list]
     _plot_svd_corr(covariate_list=covariate_list,
@@ -59,14 +73,31 @@ def plot_svd_corr(obj, covariate_list, cbar=False, imgdir='./'):
                    cbar=cbar)
 
 
-# TODO: Keep refactoring suff to graph_id below here:
-# TODO: add plotting scale parameters:
-# TODO: Clean up - use pre-computed scores!
+# TODO: Fix plotting for ngenes
 def plot_heatmap_avgexpr(obj, graph_id, covariate_list=None,
-                         attr="leiden", cbar=False, imgdir='./'):
-    """Plot heatmap of module average expression in each covariate."""
+                         attr="leiden", cbar=False, imgdir='./', ext='png'):
+    """\
+        Plot heatmap of modules' average expression against each covariate level
+
+        Parameters
+        ----------
+        obj : modules
+            Object (``modules``) with graph and modules to plot
+        covariate_list : list
+            List of covariates to plot
+        graph_id : str
+            Name of graph to plot
+        attr : str
+            Name of modules in graph to plot
+        cbar : bool
+            Whether to show colorbar on side
+        imgdir : str
+            Directory where images will go
+        ext : str
+            Extension for image (``'png'`` or ``'pdf'``)
+    """
     plotname = imgdir + "heatmap_" + \
-        obj.suffix + "_" + graph_id + "_" + attr + ".png"
+        obj.suffix + "_" + graph_id + "_" + attr + "." + ext
     if covariate_list is None:
         covariate_list = ["celltype", "region", "niareagansc",
                     "cogdx", "Apoe_e4", "msex"]

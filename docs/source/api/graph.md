@@ -1,4 +1,4 @@
-### Graph
+# Graph
 
 ```{eval-rst}
 .. module:: scdemon.graph

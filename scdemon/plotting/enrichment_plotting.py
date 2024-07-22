@@ -11,16 +11,38 @@ import seaborn as sns
 from .utils_enrichment import calc_df_enrichment, format_enrichment_matrices
 
 
-# TODO: Check + make testing framework
-def plot_df_enrichment(obj, df, col, suffix, graph_id=None, imgdir='./',
+def plot_df_enrichment(obj, graph_id, df, col, suffix, imgdir='./',
                        attr='leiden', title=None, ext="png"):
+    """\
+        Calculate and plot enrichment of sets of genes (e.g. DEGs) against modules
+
+        Parameters
+        ----------
+        obj : gene_graph | modules
+            Object (``gene_graph`` or ``modules``) with modules to plot
+        graph_id : str
+            Name of graph to work with
+        df : pandas.DataFrame
+            Dataframe containing gene sets, with gene column named ``'gene'``
+        col : str
+            Column name in ``df`` that gives the gene sets
+        suffix : str
+            Suffix for the plot filename
+        attr : str
+            Name of modules in the graph
+        title : str
+            Title for plot
+        imgdir : str
+            Directory for images
+        ext : str
+            Extension for file (either ``'pdf'`` or ``'png'``)
+    """
     # Check if object is a graph or not:
     if type(obj) is gene_graph:
         graph_obj = obj
         plotname = imgdir + "modules_degenr_heatmap_" + suffix + "." + ext
     else:
-        if (graph_id is None) or (not hasattr(obj, 'graphs')) or \
-                (graph_id not in obj.graphs):
+        if (not hasattr(obj, 'graphs')) or (graph_id not in obj.graphs):
             raise ValueError(
                 "Graph with ID '%s' doesn't exist in this object." % graph_id)
         else:
@@ -37,7 +59,6 @@ def plot_df_enrichment(obj, df, col, suffix, graph_id=None, imgdir='./',
 
 
 
-# TODO: Check works if not using all modules / or genes are missing
 def _plot_df_enrichment_core(df, col, genes, module_match, mnames, plotname,
                              title=None):
     """Plot enrichment of modules in dataframe."""

@@ -17,25 +17,25 @@ pip install ./scdemon
 #+END_SRC
 
 
-**** Minimal conda environment:
-
+**** Conda environment:
 #+BEGIN_SRC bash
-conda create -n scdemonpy conda-forge::anndata conda-forge::tqdm conda-forge::pip conda-forge::igraph conda-forge::umap-learn conda::scikit-build
+# Minimal:
+conda create -n scdemonpy -c conda-forge numpy pandas scipy igraph umap-learn leidenalg scanpy seaborn matplotlib
+
+# If you want to run GO enrichment:
+conda install -n scdemonpy -c bioconda gprofiler-official
 #+END_SRC
 
 
-**** Full Dependencies:
+**** Dependencies:
 
 #+BEGIN_SRC bash
-numpy, pandas,
-scipy, tqdm,
-igraph, umap-learn,
-leidenalg, scikit-learn,
-scanpy, anndata,
-seaborn, matplotlib,
-gprofiler-official,
-python-igraph, adjustText,
-numba
+# Core:
+numpy, pandas, scipy, igraph, umap-learn, 
+leidenalg, scanpy, seaborn, matplotlib
+
+# Optional:
+anndata, gprofiler-official, adjustText
 #+END_SRC
 
 
@@ -79,4 +79,7 @@ mod.save_modules(graph_id)
 # Get functional enrichments for the modules:
 gpres = sm.get_goterms(mod, graph_id)
 #+END_SRC
+
+
+Cite: Mathys*, Boix*, Akay*, et al., [_Single-cell multiregion dissection of Alzheimer’s disease_](https://www.nature.com/articles/s41586-024-07606-7)
 

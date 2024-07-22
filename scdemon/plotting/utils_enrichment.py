@@ -3,9 +3,6 @@
 import numpy as np
 import pandas as pd
 
-# For enrichment:
-from scipy.stats import hypergeom
-
 
 def calc_df_enrichment(df, col, genes, module_match):
     """
@@ -14,6 +11,7 @@ def calc_df_enrichment(df, col, genes, module_match):
     Given a dataframe with genes (df.gene) and some split (df[col]),
     calculate the enrichment of each split in the modules
     """
+    from scipy.stats import hypergeom
     # Count genes in each:
     keys = np.flip(np.sort(pd.unique(df[col])))
     cmat = np.zeros((np.max(module_match) + 1, len(keys)), int)

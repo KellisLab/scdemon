@@ -3,13 +3,12 @@
 # Internal imports:
 from .graph import gene_graph, adjacency_matrix
 from .utils import (
-    # Correlation:
+    # Correlation, covariates, multigraph:
     calculate_correlation,
     calculate_correlation_estimate,
     calculate_correlation_estimate_sd,
-    calculate_svd_covar_corr, # Covariates
+    calculate_svd_covar_corr,
     calculate_margin_genes,
-    # Multigraph
     make_graphlist, partition_graphlist,
 )
 
@@ -20,10 +19,7 @@ import logging
 
 import numpy as np
 import pandas as pd
-from scipy import sparse
 from pandas.api.types import is_categorical_dtype
-
-from anndata import AnnData
 
 
 class modules(object):
@@ -42,8 +38,8 @@ class modules(object):
         """\
             Parameters
             ----------
-            adata : AnnData
-                Single-cell dataset
+            adata : anndata.AnnData
+                Single-cell dataset from scanpy
             U : np.array
                 SVD left singular vectors of size ``(n_obs, k)``.
                 If all of ``U``, ``s``, ``V`` are not provided, will re-calculate SVD on given data.

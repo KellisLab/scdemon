@@ -2,14 +2,10 @@
 """UMAP plotting - grid of modules."""
 import logging
 import numpy as np
+
 from matplotlib import pyplot as plt
-import seaborn as sns
-
-# For graphs
-import textwrap # TODO: Remove dependency
 
 
-# TODO: make function for this
 def _plot_cell_umap(umat, c, plotname=None, ax=None, title=None,
                    s=1, width=8, axlab=False, cmap='viridis'):
     """Plot single umap with given scores as colors."""
@@ -23,6 +19,7 @@ def _plot_cell_umap(umat, c, plotname=None, ax=None, title=None,
         plt.figure(figsize=(width, height))
         ax = plt.gca()
     if title is not None:
+        import textwrap # NOTE: Remove dependency
         tw = textwrap.fill(title, 18)
         ax.text(mid[0], mid[1], tw, fontdict={"fontsize": 7},
                 ha='center', va='center')
@@ -41,7 +38,6 @@ def _plot_cell_umap(umat, c, plotname=None, ax=None, title=None,
         plt.close()
 
 
-# TODO: Should width be the full size?
 def _plot_umap_grid(umat, scores, titles, plotname=None,
                    ind=None, sel=None, width=2, s=0.5):
     """Plot modules scores on UMAP as a grid."""
@@ -50,7 +46,7 @@ def _plot_umap_grid(umat, scores, titles, plotname=None,
     nr = int(np.round(np.sqrt(nplot) * 0.8))
     nc = int(np.ceil(nplot / (nr * 1.0)))
     # Select specific cells:
-    if ind is not None:  # TODO Fix this delimitation with quantiles?
+    if ind is not None:
         umat = umat[ind, :]
         scores = scores[ind, :]
     # Define plotting range so each plot preserves aspect:
@@ -87,10 +83,32 @@ def _plot_umap_grid(umat, scores, titles, plotname=None,
     logging.info("Plotted grid of modules on UMAP to: " + plotname)
 
 
-
-# TODO: Plot a single module, several, or all modules:
 def plot_umap_grid(obj, graph_id, attr='leiden', plotname=None,
-                    ind=None, sel=None, width=2, s=0.5, imgdir='./'):
+                   ind=None, sel=None, width=2, s=0.5, imgdir='./'):
+    """\
+        Plot module average expression on the UMAP in a grid
+
+        Parameters
+        ----------
+        obj : gene_graph | modules
+            Object (``gene_graph`` or ``modules``) with modules to plot
+        graph_id : str
+            Name of graph to work with
+        attr : str
+            Name of modules in the graph
+        plotname
+            Name for output file, overriding default naming scheme
+        ind : np.array
+            Which subset of cells to plot, (default ``None`` is plot all cells)
+        sel : list | np.array
+            Which set of modules to plot
+        width : float
+            Width (and height) of each subplot in the grid
+        s : float
+            Size of points
+        imgdir : str
+            Directory for images
+    """
     if plotname is None:
         plotname = imgdir + "module_umap_grid_" + \
             obj.suffix + "_" + graph_id + ".png"

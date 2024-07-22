@@ -2,7 +2,6 @@
 """Utility scripts for community detection."""
 import logging
 import numpy as np
-import leidenalg as la
 
 
 def compute_leiden_partition(graph,
@@ -11,6 +10,7 @@ def compute_leiden_partition(graph,
                              use_weights=False,
                              n_iterations=-1,
                              random_state=1):
+    import leidenalg as la
     # Set up the leidenalg arguments:
     partition_kwargs = {}
     partition_kwargs["n_iterations"] = n_iterations
