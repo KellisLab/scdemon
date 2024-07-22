@@ -68,10 +68,10 @@ todo_include_todos = False
 # html_theme = "scanpydoc"
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
-html_theme_options = {
-    "repository_url": repository_url,
-    "use_repository_button": True,
-}
+# html_theme_options = { # Meeds sphinx-book-theme or scanpydoc
+#     "repository_url": repository_url,
+#     "use_repository_button": True,
+# }
 html_show_sphinx = False
 # html_logo = "_static/img/Scanpy_Logo_BrightFG.svg"
 html_title = "scdemon"

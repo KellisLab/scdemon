@@ -24,9 +24,7 @@ dependencies = [
     # Added from original modules, can prune:
     "scanpy", "anndata",
     "seaborn", "matplotlib",
-    "gprofiler-official",
-    "igraph", "adjustText",
-    "numba"
+    "igraph", "numba"
 ]
 
 [project.urls]
@@ -35,7 +33,7 @@ Source = "https://github.com/kellislab/scdemon"
 Home-page = "https://github.com/kellislab/scdemon"
 
 [project.optional-dependencies]
-test = ["pytest", "pytest-cov", "statsmodels", "anndata"]
+test = ["adjustText", "gprofiler-official"]
 
 [tool.scikit-build]
 wheel.expand-macos-universal-tags = true
@@ -44,9 +42,6 @@ wheel.expand-macos-universal-tags = true
 packages = ["scdemon", 
          "scdemon.utils", "scdemon.plotting",
          "scdemon.graph", "scdemon.data"]
-
-[tool.pytest.ini_options]
-python_files = "test_*.py"
 
 [tool.coverage.run]
 branch = true

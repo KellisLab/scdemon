@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 """Example code for using scdemon part of the library."""
-# ---------------------------------------------------------------------
 # Example - compute co-expression modules using a scanpy anndata object
-# Updated: 04/08/24
-# ---------------------------------------------------------------------
 import os
 import logging
 import numpy as np

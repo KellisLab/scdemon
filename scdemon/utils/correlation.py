@@ -5,8 +5,9 @@ import numpy as np
 
 
 def calculate_margin_genes(X):
+    from scipy.sparse import issparse
     margin = np.mean(X > 0, axis=0).copy()
-    if sparse.issparse(X):
+    if issparse(X):
         margin = np.array(margin)[0]
     return(margin)
 

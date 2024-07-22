@@ -5,7 +5,6 @@ import logging
 import numpy as np
 
 import igraph
-from adjustText import adjust_text
 from matplotlib import pyplot as plt
 
 
@@ -58,6 +57,7 @@ def _add_labels(labels, layout, ax, adjust_labels=True, fontsize=12):
                         ha="center", va="center", fontsize=fontsize)
                 for i in keptind]
         if adjust_labels:
+            from adjustText import adjust_text
             adjust_text(text, lim=25)
 
 

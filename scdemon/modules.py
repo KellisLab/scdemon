@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Class for computing modules on adata object."""
-
+"""Class for handling modules and graph objects."""
 # Internal imports:
 from .graph import gene_graph, adjacency_matrix
 from .utils import (
@@ -67,10 +66,6 @@ class modules(object):
                 Compare the metadata covariates to the PCs.
             covariate_cutoff : float
                 covariate_cutoff
-
-            Returns
-            -------
-            Object with which to compute gene modules
         """
         # Dataset:
         self.adata = adata

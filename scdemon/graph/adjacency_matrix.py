@@ -17,12 +17,9 @@ from scipy import sparse
 
 
 class adjacency_matrix(object):
+    """\
+        Process given correlation matrix into the adjacency matrix.
     """
-    Turn a correlation matrix into an adjacency matrix.
-
-    Process given correlation matrix into the adjacency matrix.
-    """
-
     def __init__(
         self,
         corr,
@@ -40,7 +37,46 @@ class adjacency_matrix(object):
         scale=None,
         degree_cutoff=0
     ):
-        """Initialize adjacency matrix class."""
+        """\
+            Initialize adjacency matrix class.
+
+
+            Parameters
+            ----------
+            corr : np.array | sparse.csr_matrix
+                Gene-gene correlation matrix
+            adjacency : np.array
+                Adjacency matrix
+            method : str
+                Thresholding method for graph:
+
+                ``'bivariate'``
+                    default, threshold based on bivariate spline fit to gene-gene sparsity
+                ``'cutoff'``
+                    single cutoff across full matrix
+                ``'sd'``
+                    based on estimated sd, expensive
+            corr_sd : np.array
+                Estimated standard deviation of correlations. Only used for ``sd`` method
+            labels : np.array
+                Labels for nodes (genes)
+            margin : np.array
+                Fraction non-zero values for each of the variables in the original dataset (gene sparsity)
+            cutoff : float
+                Raw correlation threshold
+            z : float
+                Z-score threshold
+            zero_outliers : bool
+                Whether to set outliers to 0 when calculating splines
+            keep_all_z : bool
+                Whether to keep z-score matrix dense by removing all values below threshold
+            knn_k : int
+                Pruning: keep only the top k edges per node
+            scale : float
+                Pruning: remove edges below a certain fraction (in (0.0, 1.0]) of the top edge for the node
+            degree_cutoff : int
+                Pruning: remove graph nodes with degree below this cutoff
+        """
         self.corr = corr
         self.adjacency = adjacency
         self.method = method

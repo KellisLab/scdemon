@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Gene graph handling."""
-# --------------------------------
-# Class for handling a gene graph:
-# Updated: 06/28/21
-# --------------------------------
+"""Class for handling a gene-gene graph."""
 from ..utils import vcorrcoef
 from ..data import snap_colors
 from .utils_community_detection import (
@@ -11,19 +7,17 @@ from .utils_community_detection import (
     get_modules_from_partition,
     set_module_colors
 )
-
 from .utils_pruning import prune_graph_components, prune_graph_degree
 
 import logging
 import numpy as np
 import pandas as pd
-from scipy import sparse
-
-# For graphs
-import igraph
 
 
 class gene_graph(object):
+    """\
+        Gene-gene graph
+    """
     def __init__(self,
                  corr,
                  genes,
@@ -32,6 +26,26 @@ class gene_graph(object):
                  edge_weight=None,
                  layout_method="fr",
                  min_size=4):
+        """\
+            Initialize gene-gene graph given adjacency matrix object or pre-computed graph
+
+            Parameters
+            ----------
+            corr : np.array | sparse.csr_matrix
+                Gene-gene correlation matrix
+            genes : np.array
+                List of genes
+            adj : adjacency_matrix
+                Adjacency matrix object
+            graph : igraph.Graph
+                Pre-computed graph (used for multigraph clustering)
+            edge_weight : float
+                Edge weight for graphs, if want a fixed weight
+            layout_method : str
+                Layout method for ``.layout()`` on ``igraph`` object
+            min_size : int
+                Minimum size of a graph component, for pruning
+        """
         self.corr = corr
         self.genes = genes
         self.adj = adj      # Adjacency matrix object
@@ -59,10 +73,24 @@ class gene_graph(object):
         self.scores = {}
         self.module_match = {}
 
-    # TODO: Add options for different methods of module detection here:
     def construct_graph(self, resolution=2, method='leiden',
                         full_graph=False, modules=True, layout=True):
-        """Construct the graph object and find gene modules."""
+        """\
+            Construct the graph object and find gene modules.
+
+            Parameters
+            ----------
+            resolution : float
+                Resolution for clustering graph into modules
+            method : str
+                Method for clustering modules. Only ``'leiden'`` currently implemented
+            full_graph : bool
+                Create full graph or threshold low values
+            modules : bool
+                Whether to calculate gene modules
+            layout : bool
+                Whether to lay out the graph
+        """
         # Building adjacency > graph > modules, handled by graph object:
         if self.graph is None:
             # 5. Build adjacency matrix
@@ -71,7 +99,7 @@ class gene_graph(object):
             # 6. Create k-NN (thresholding) from adjacency
             # Note: full adjacency graph is for multi-graph purposes.
             self._make_graph(full=full_graph)
-        # TODO: check if modules is None, also remake if made new graph
+        # NOTE: check if modules is None, also remake if made new graph
         if modules:
             # 7. Perform community detection (NMF, BigClam, Leiden)
             self.calculate_gene_modules(
@@ -80,9 +108,16 @@ class gene_graph(object):
             # 7a. Layout graph
             self.layout_graph(layout_method=self.layout_method)
 
-    # TODO: Decide if arguments feed in or keep everything in self.
     def _make_graph(self, full=False):
-        """Make graph object from adjacency."""
+        """\
+            Make graph object from adjacency.
+
+            Parameters
+            ----------
+            full : bool
+                Whether to create full graph or to threshold low values and prune graph. Full graph is used for multigraph
+        """
+        import igraph
         logging.info("Making graph object from adjacency.")
         if full:
             # Use the full adjacency before adjacency pruning:
@@ -113,7 +148,14 @@ class gene_graph(object):
                         " nodes, out of " + str(self.corr.shape[0]))
 
     def layout_graph(self, layout_method='fr'):
-        """Compute graph layout."""
+        """\
+            Compute graph layout.
+
+            Parameters
+            ----------
+            layout_method
+                Layout method for ``.layout()`` on ``igraph`` object
+        """
         logging.info("Laying out graph, method=" + str(layout_method))
         if layout_method == "fr":
             self.layout = self.graph.layout_fruchterman_reingold(
@@ -122,21 +164,27 @@ class gene_graph(object):
             self.layout = self.graph.layout(layout_method)
 
     def calculate_gene_modules(self, method="leiden", **kwargs):
-        """Calculate modules from gene-gene graph using graph clustering."""
+        """\
+            Calculate modules from gene-gene graph using graph clustering.
+
+            Parameters
+            ----------
+            method : str
+                Method for clustering modules. Only ``'leiden'`` currently implemented
+            **kwargs
+                Arguments for calculating modules using given method
+        """
         logging.info("Running module detection using method=" + str(method))
-        # TODO: fix assigning method for factors
         if method == 'leiden':
             self.assign[method] = calculate_gene_modules_leiden(
                 self.graph, **kwargs)
         else:
-            # TODO: implement louvain, resolution seems more tunable?
+            # NOTE: Could also implement louvain, HDBSCAN, etc
             raise ValueError("Method '%s' not found" % method)
 
-        # TODO: fix color for factors, maybe just store one color per module
         self.colors[method] = set_module_colors(
             self.assign[method], self.snapcols)
 
-    # TODO: put full handling of multigraph in gene_graph, including graphlist
     def _partition_multigraph(self, graph, graphlist, membership,
                               method = 'leiden'):
         # Turn multiplex partition into modules
@@ -151,7 +199,6 @@ class gene_graph(object):
         self.colors[method] = set_module_colors(
             self.assign[method], self.snapcols)
 
-    # TODO: Allow compute on adjusted adjacency
     def compute_umap(self):
         """Calculate UMAP for correlation estimate underlying graph."""
         import umap
@@ -167,7 +214,22 @@ class gene_graph(object):
         self.umat = uw.fit_transform(corr_gene_subset)
 
     def get_modules(self, attr="leiden", adata=None, print_modules=False):
-        """Get list of modules from graph and clustering."""
+        """\
+            Get list of modules from graph and clustering.
+
+            Parameters
+            ----------
+            attr : str
+                Modules name within the graph ('leiden' is only current supported method)
+            adata : AnnData
+                AnnData object (needed if modules haven't been populated)
+            print_modules : bool
+                Whether to print modules as well
+
+            Returns
+            -------
+            Dictionary of modules with lists of assigned genes
+        """
         if attr not in self.modules.keys():
             # Construct object if necessary:
             self.populate_modules(adata, attr)
@@ -187,7 +249,22 @@ class gene_graph(object):
         return mdf
 
     def find_gene(self, gene, attr='leiden', print_genes=False):
-        """Find module corresponding to a gene."""
+        """\
+            Find the module containing a specific gene.
+
+            Parameters
+            ----------
+            gene : str
+                Gene to look up in the modules
+            attr : str
+                Modules name within the graph ('leiden' is only current supported method)
+            print_genes: bool
+                Whether to print the list of genes in the module
+
+            Returns
+            -------
+            List of genes in the module that contains the query gene
+        """
         mkey = None
         for key in self.modules[attr].keys():
             if gene in self.modules[attr][key]:
@@ -202,19 +279,25 @@ class gene_graph(object):
                 print(mkey, " ".join(out))
         return out
 
-    # TODO: Speed this up (possibly avg. by tform multiplication)
-    # Modules lists functions (requires external adata or X):
-    # TODO: Update to use X only, not adata.X (fix subsetting)
     def populate_modules(self, adata, attr='leiden'):
-        """Populate modules data."""
+        """\
+            Populate modules data, including average expression across cells and the top genes.
+
+            Parameters
+            ----------
+            adata : AnnData
+                Single-cell dataset, if need to populate modules
+            attr : str
+                Modules name within the graph ('leiden' is only current supported method)
+        """
+        from scipy.sparse import issparse
+        logging.info("Populating modules data")
         if adata is None:
             raise TypeError("adata is None, need adata to populate modules")
-        logging.info("Populating modules data")
-        # TODO: make orderedDict for the module names?
         partition = self.assign[attr]
         nam = np.array(self.graph.vs["name"])
         modules = np.unique(partition)
-        issp = sparse.issparse(adata.X)  # TODO: get this into graph class
+        issp = issparse(adata.X)
         # Initialize:
         self.modules[attr] = {}
         self.mnames[attr] = [""] * (np.max(modules) + 1)
@@ -237,7 +320,6 @@ class gene_graph(object):
             self.mnames[attr][i] = "M" + str(i) + \
                 " (" + ngstr + "): " + topgenes
 
-    # TODO: Speed this up - sort step can be slow
     def match_genes_to_modules(self, attr='leiden'):
         """Match genes to the closest to module by its correlation."""
         logging.info("Matching genes to modules")
@@ -260,9 +342,21 @@ class gene_graph(object):
             self.module_match[attr] = np.argmax(self.module_match[attr], 1)
 
     # Add save functions here (graph and full object as well):
-    def save_modules(self, attr="leiden", as_df=True,
-                     filename=None, adata=None):
-        """Save module list as txt or tsv."""
+    def save_modules(self, filename, attr="leiden", as_df=True, adata=None):
+        """\
+            Save module list for this specific graph as txt or tsv.
+
+            Parameters
+            ----------
+            filename : str
+                Name for output file, required
+            attr : str
+                Modules name within the graph ('leiden' is only current supported method)
+            as_df : bool
+                Write out dataframe instead of a raw list of genes per module
+            adata : AnnData
+                Single-cell dataset, if need to populate modules
+        """
         if as_df:
             mdf = pd.DataFrame({"gene": np.array(self.graph.vs["name"]),
                                 "leiden": self.assign[attr],
