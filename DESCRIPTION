@@ -12,10 +12,13 @@ License: GPL-3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3
-Imports: Rcpp, RcppEigen (>= 0.3.4.0.0), RcppProgress, Matrix
+Imports: Matrix
 Depends: R (>= 4.1)
 Suggests:
     tinytest,
+    car,
+    MASS,
+    lme4,
     lmtest,
     sandwich,
     SingleCellExperiment,
@@ -24,5 +27,5 @@ Suggests:
     anndataR,
 Config/testthat/edition: 3
 LazyData: true
-LinkingTo: Rcpp, RcppEigen, RcppProgress
-SystemRequirements: C++17
+# LinkingTo: Rcpp, RcppEigen, RcppProgress
+# SystemRequirements: C++17
