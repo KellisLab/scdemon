@@ -25,7 +25,7 @@ Once we have this dataset, we can create an object that handles any modules and 
 .. code-block:: python
 
     # Make the modules handling object:
-    mod = sm.modules_core(adata, suffix='pbmc_example', k=100)
+    mod = sm.modules(adata, suffix='pbmc_example', k=100)
     mod.setup()
 
 
